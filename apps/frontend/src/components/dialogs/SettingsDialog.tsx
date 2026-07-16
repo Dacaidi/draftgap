@@ -14,6 +14,12 @@ import {
     StatsSite,
 } from "@draftgap/core/src/models/user/Config";
 import {
+    DataTiers,
+    displayNameByDataTier,
+    type DataTier,
+    DEFAULT_DATA_TIER,
+} from "@draftgap/core/src/models/dataset/DataTier";
+import {
     Dialog,
     DialogContent,
     DialogHeader,
@@ -21,15 +27,25 @@ import {
     DialogTrigger,
 } from "../common/Dialog";
 import { FAQDialog } from "./FAQDialog";
+import { useDataset } from "../../contexts/DatasetContext";
+import { Button } from "../common/Button";
 
 export default function SettingsDialog() {
     const { isDesktop } = useMedia();
     const { config, setConfig } = useUser();
+    const { datasetState, refreshLocalDatasets } = useDataset();
 
     const riskLevelOptions: ButtonGroupOption<RiskLevel>[] = RiskLevel.map(
         (level) => ({
             value: level,
             label: displayNameByRiskLevel[level],
+        }),
+    );
+
+    const dataTierOptions: ButtonGroupOption<DataTier>[] = DataTiers.map(
+        (tier) => ({
+            value: tier,
+            label: displayNameByDataTier[tier],
         }),
     );
 
@@ -106,6 +122,39 @@ export default function SettingsDialog() {
                         })
                     }
                 />
+                <Show when={isDesktop}>
+                    <div class="flex flex-col gap-1 mt-3">
+                        <span class="text-lg uppercase">Data rank</span>
+                        <ButtonGroup
+                            options={dataTierOptions}
+                            selected={config.dataTier}
+                            size="sm"
+                            class="flex-wrap"
+                            disabled={
+                                datasetState() === "pending" ||
+                                datasetState() === "refreshing"
+                            }
+                            onChange={(dataTier) => setConfig({ dataTier })}
+                        />
+                        <span class="text-sm text-neutral-400">
+                            Emerald+ uses DraftGap's online dataset. Other ranks
+                            are generated once and stored on this device.
+                        </span>
+                        <Show when={config.dataTier !== DEFAULT_DATA_TIER}>
+                            <Button
+                                variant="secondary"
+                                disabled={
+                                    datasetState() === "pending" ||
+                                    datasetState() === "refreshing"
+                                }
+                                onClick={() => refreshLocalDatasets()}
+                                class="self-start mt-1"
+                            >
+                                Rebuild local data
+                            </Button>
+                        </Show>
+                    </div>
+                </Show>
             </div>
             <div>
                 <h3 class="text-3xl uppercase">UI</h3>

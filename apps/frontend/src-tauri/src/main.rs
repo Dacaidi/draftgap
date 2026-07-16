@@ -8,11 +8,13 @@ use std::os::windows::process::CommandExt;
 use reqwest::Client;
 use serde::Serialize;
 use serde_json::Value;
-use tauri::async_runtime::Mutex;
+use std::path::PathBuf;
+use tauri::{async_runtime::Mutex, Manager};
 
 struct AppState {
     lcu_data: Mutex<Option<LcuData>>,
-    client: Client,
+    lcu_client: Client,
+    dataset_client: Client,
 }
 
 #[derive(Serialize, Debug)]
@@ -97,7 +99,7 @@ async fn get_lcu_response(
     let lcu_data = lcu_data_mutex.as_ref().unwrap();
 
     let res = state
-        .client
+        .lcu_client
         .get(format!("https://127.0.0.1:{}/{}", lcu_data.port, path))
         .basic_auth(&lcu_data.username, Some(&lcu_data.password))
         .send()
@@ -168,15 +170,144 @@ async fn get_pickable_champion_ids(state: tauri::State<'_, AppState>) -> Result<
     get_lcu_response(&state, "lol-champ-select/v1/pickable-champion-ids").await
 }
 
+#[derive(Serialize)]
+#[serde(rename_all = "camelCase")]
+struct DatasetHttpResponse {
+    status: u16,
+    body: String,
+}
+
+fn is_allowed_dataset_url(url: &reqwest::Url) -> bool {
+    if url.scheme() != "https" {
+        return false;
+    }
+
+    let Some(host) = url.host_str() else {
+        return false;
+    };
+
+    host == "lolalytics.com"
+        || host.ends_with(".lolalytics.com")
+        || host == "ddragon.leagueoflegends.com"
+}
+
+#[tauri::command]
+async fn fetch_dataset_url(
+    state: tauri::State<'_, AppState>,
+    url: String,
+) -> Result<DatasetHttpResponse, String> {
+    let url = reqwest::Url::parse(&url).map_err(|e| format!("Invalid dataset URL: {e}"))?;
+    if !is_allowed_dataset_url(&url) {
+        return Err("Dataset URL is not allowed".to_owned());
+    }
+
+    let response = state
+        .dataset_client
+        .get(url)
+        .send()
+        .await
+        .map_err(|e| format!("Could not fetch dataset URL: {e}"))?;
+    let status = response.status().as_u16();
+    let body = response
+        .text()
+        .await
+        .map_err(|e| format!("Could not read dataset response: {e}"))?;
+
+    Ok(DatasetHttpResponse { status, body })
+}
+
+fn local_dataset_path(
+    app: &tauri::AppHandle,
+    dataset_version: &str,
+    tier: &str,
+    name: &str,
+) -> Result<PathBuf, String> {
+    let valid_component = |value: &str| {
+        !value.is_empty()
+            && value.chars().all(|character| {
+                character.is_ascii_alphanumeric() || character == '-' || character == '_'
+            })
+    };
+
+    if !valid_component(dataset_version) || !valid_component(tier) || !valid_component(name) {
+        return Err("Invalid local dataset path".to_owned());
+    }
+
+    let mut path = app
+        .path()
+        .app_data_dir()
+        .map_err(|e| format!("Could not resolve app data directory: {e}"))?;
+    path.push("datasets");
+    path.push(format!("v{dataset_version}"));
+    path.push(tier);
+    path.push(format!("{name}.json"));
+    Ok(path)
+}
+
+#[tauri::command]
+fn load_local_dataset(
+    app: tauri::AppHandle,
+    dataset_version: String,
+    tier: String,
+    name: String,
+) -> Result<Option<String>, String> {
+    let path = local_dataset_path(&app, &dataset_version, &tier, &name)?;
+    if !path.exists() {
+        return Ok(None);
+    }
+
+    std::fs::read_to_string(path)
+        .map(Some)
+        .map_err(|e| format!("Could not read local dataset: {e}"))
+}
+
+#[tauri::command]
+fn save_local_dataset(
+    app: tauri::AppHandle,
+    dataset_version: String,
+    tier: String,
+    name: String,
+    contents: String,
+) -> Result<(), String> {
+    let path = local_dataset_path(&app, &dataset_version, &tier, &name)?;
+    let parent = path
+        .parent()
+        .ok_or_else(|| "Local dataset has no parent directory".to_owned())?;
+    std::fs::create_dir_all(parent)
+        .map_err(|e| format!("Could not create local dataset directory: {e}"))?;
+
+    let temporary_path = path.with_extension("json.tmp");
+    std::fs::write(&temporary_path, contents)
+        .map_err(|e| format!("Could not write local dataset: {e}"))?;
+    if path.exists() {
+        std::fs::remove_file(&path).map_err(|e| format!("Could not replace local dataset: {e}"))?;
+    }
+    std::fs::rename(temporary_path, path)
+        .map_err(|e| format!("Could not finish local dataset write: {e}"))?;
+
+    Ok(())
+}
+
 fn main() {
-    let client = Client::builder()
+    let lcu_client = Client::builder()
         .danger_accept_invalid_certs(true)
         .build()
         .expect("Could not build client");
+    let dataset_client = Client::builder()
+        .redirect(reqwest::redirect::Policy::custom(|attempt| {
+            if is_allowed_dataset_url(attempt.url()) {
+                attempt.follow()
+            } else {
+                attempt.stop()
+            }
+        }))
+        .build()
+        .expect("Could not build dataset client");
 
     let state = AppState {
         lcu_data: Mutex::new(None),
-        client,
+        lcu_client,
+        dataset_client,
     };
 
     tauri::Builder::default()
@@ -189,7 +320,10 @@ fn main() {
             get_champ_select_session,
             get_current_summoner,
             get_grid_champions,
-            get_pickable_champion_ids
+            get_pickable_champion_ids,
+            fetch_dataset_url,
+            load_local_dataset,
+            save_local_dataset
         ])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");

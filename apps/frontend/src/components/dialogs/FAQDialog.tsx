@@ -83,16 +83,14 @@ export function FAQDialog() {
 
             <div>
                 <h2 class="text-2xl uppercase">
-                    Why can I not filter data based on rank?
+                    How does rank filtering work?
                 </h2>
                 <p class="font-body">
-                    Since we are using data from Lolalytics, adding more ranks
-                    to filter on will result in more than doubling the cost we
-                    are imposing on Lolalytics. We do not want to impose any
-                    more cost than we already are, thus we only support data for
-                    one rank. Besides this reason, allowing for filtering by
-                    higher ranks will also result in a lot more data sample size
-                    issues, resulting in less accurate predictions.
+                    The default Emerald+ dataset is downloaded from DraftGap. In
+                    the desktop app, other ranks are generated from Lolalytics
+                    and stored locally on this device. The initial generation
+                    can take a while. Higher ranks also have smaller sample
+                    sizes, which can make predictions less reliable.
                 </p>
             </div>
 

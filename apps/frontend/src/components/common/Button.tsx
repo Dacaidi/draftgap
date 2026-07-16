@@ -23,7 +23,7 @@ export const buttonVariants = cva(
     },
 );
 
-type Props = JSX.HTMLAttributes<HTMLButtonElement> &
+type Props = JSX.ButtonHTMLAttributes<HTMLButtonElement> &
     VariantProps<typeof buttonVariants>;
 
 export function Button(props: Props) {

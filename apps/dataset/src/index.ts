@@ -1,4 +1,3 @@
-import "dotenv/config";
 import { getChampionDataFromLolalytics } from "./lolalytics";
 import {
     deleteDatasetMatchupSynergyData,
@@ -10,7 +9,6 @@ import type {
     RuneData,
     RunePathData,
 } from "@draftgap/core/src/models/dataset/RuneData";
-import { storeDataset } from "./storage/storage";
 import {
     getVersions,
     getChampions,
@@ -23,6 +21,10 @@ import {
     type RiotSummonerSpell,
 } from "./riot";
 import type { SummonerSpellData } from "@draftgap/core/src/models/dataset/SummonerSpellData";
+import {
+    DEFAULT_DATA_TIER,
+    type DataTier,
+} from "@draftgap/core/src/models/dataset/DataTier";
 
 const BATCH_SIZE = 10;
 
@@ -79,6 +81,26 @@ const STAT_SHARD_DATA = {
 };
 
 async function main() {
+    const storageModulePath = "./storage/storage";
+    const { storeDataset } = await import(/* @vite-ignore */ storageModulePath);
+    const { currentPatch, thirtyDays } =
+        await generateDatasets(DEFAULT_DATA_TIER);
+
+    await storeDataset(currentPatch, { name: "current-patch" });
+    await storeDataset(thirtyDays, { name: "30-days" });
+}
+
+export type DatasetGenerationProgress = {
+    dataset: "current-patch" | "30-days";
+    completedChampions: number;
+    totalChampions: number;
+};
+
+export async function generateDatasets(
+    tier: DataTier,
+    onProgress?: (progress: DatasetGenerationProgress) => void,
+    batchSize = BATCH_SIZE,
+) {
     const currentVersion = (await getVersions())[0];
     console.log("Patch:", currentVersion);
 
@@ -106,6 +128,14 @@ async function main() {
         runes,
         items,
         summonerSpells,
+        tier,
+        (completedChampions, totalChampions) =>
+            onProgress?.({
+                dataset: "current-patch",
+                completedChampions,
+                totalChampions,
+            }),
+        batchSize,
     );
     const dataset30days = await getDataset(
         "30",
@@ -113,12 +143,22 @@ async function main() {
         runes,
         items,
         summonerSpells,
+        tier,
+        (completedChampions, totalChampions) =>
+            onProgress?.({
+                dataset: "30-days",
+                completedChampions,
+                totalChampions,
+            }),
+        batchSize,
     );
 
     deleteDatasetMatchupSynergyData(datasetCurrentPatch);
 
-    await storeDataset(datasetCurrentPatch, { name: "current-patch" });
-    await storeDataset(dataset30days, { name: "30-days" });
+    return {
+        currentPatch: datasetCurrentPatch,
+        thirtyDays: dataset30days,
+    };
 }
 
 function riotRunesToRuneData(runes: RiotRunePath[]) {
@@ -203,12 +243,15 @@ function riotSummonerSpellsToSummonerSpellData(
     );
 }
 
-async function getDataset(
+export async function getDataset(
     version: string,
     champions: RiotChampion[],
     runes: RiotRunePath[],
     items: Record<string, RiotItem>,
     summonerSpells: Record<string, RiotSummonerSpell>,
+    tier: DataTier = DEFAULT_DATA_TIER,
+    onProgress?: (completedChampions: number, totalChampions: number) => void,
+    batchSize = BATCH_SIZE,
 ) {
     console.log("Getting dataset for version", version);
     const dataset: Dataset = {
@@ -221,19 +264,23 @@ async function getDataset(
             riotSummonerSpellsToSummonerSpellData(summonerSpells),
     };
 
-    for (let i = 0; i < champions.length; i += BATCH_SIZE) {
+    for (let i = 0; i < champions.length; i += batchSize) {
         console.log(
-            `Processing batch ${i / BATCH_SIZE} of ${Math.ceil(
-                champions.length / BATCH_SIZE,
+            `Processing batch ${i / batchSize} of ${Math.ceil(
+                champions.length / batchSize,
             )}`,
         );
-        const batch = champions.slice(i, i + BATCH_SIZE);
+        const batch = champions.slice(i, i + batchSize);
         const championData = await Promise.all(
             batch.map(
                 async (champion) =>
                     [
                         champion,
-                        await getChampionDataFromLolalytics(version, champion),
+                        await getChampionDataFromLolalytics(
+                            version,
+                            champion,
+                            tier,
+                        ),
                     ] as const,
             ),
         );
@@ -250,6 +297,11 @@ async function getDataset(
 
             dataset.championData[champion.key] = champion;
         }
+
+        onProgress?.(
+            Math.min(i + batch.length, champions.length),
+            champions.length,
+        );
     }
 
     removeRankBias(dataset);
@@ -257,4 +309,9 @@ async function getDataset(
     return dataset;
 }
 
-main();
+if (
+    (globalThis as any).Bun !== undefined &&
+    (import.meta as ImportMeta & { main?: boolean }).main
+) {
+    void main();
+}

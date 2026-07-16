@@ -19,8 +19,10 @@ import { BuildEntity } from "@draftgap/core/src/models/build/BuildEntity";
 import { useDraftAnalysis } from "./DraftAnalysisContext";
 import { useDataset } from "./DatasetContext";
 import { useDraftView } from "./DraftViewContext";
+import { useUser } from "./UserContext";
 
 export function createBuildContext() {
+    const { config } = useUser();
     const { allyTeam, opponentTeam } = useDraft();
     const { dataset, dataset30Days } = useDataset();
     const { allyTeamComp, opponentTeamComp, draftAnalysisConfig } =
@@ -109,6 +111,7 @@ export function createBuildContext() {
             championRole(),
             theirTeamComp() ? Object.fromEntries(theirTeamComp()!) : undefined,
             dataset(),
+            config.dataTier,
         ],
         queryFn: async (ctx) => {
             if (championKey() === undefined || !theirTeamComp() || !dataset()) {
@@ -131,6 +134,7 @@ export function createBuildContext() {
                 championKey()!,
                 championRole()!,
                 theirTeamComp()!,
+                config.dataTier,
             );
         },
         refetchInterval: false,

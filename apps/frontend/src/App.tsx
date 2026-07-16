@@ -43,7 +43,13 @@ import { LanguageDropdownMenu } from "./components/LanguageMenu";
 const App: Component = () => {
     const { config } = useUser();
     const { currentDraftView, setCurrentDraftView } = useDraftView();
-    const { dataset, isLoaded } = useDataset();
+    const {
+        dataset,
+        isLoaded,
+        datasetState,
+        datasetError,
+        generationProgress,
+    } = useDataset();
     const { analysisPick, setAnalysisPick, showAnalysisPick } =
         useDraftAnalysis();
     const { startLolClientIntegration, stopLolClientIntegration } =
@@ -78,19 +84,40 @@ const App: Component = () => {
                 }}
             >
                 <Switch>
-                    <Match
-                        when={
-                            dataset.state === "ready" && dataset() === undefined
-                        }
-                    >
-                        <div class="flex justify-center items-center h-full text-2xl text-red-500">
-                            An unexpected error occurred. Please try again
-                            later.
+                    <Match when={datasetState() === "errored"}>
+                        <div class="flex flex-col justify-center items-center h-full text-2xl text-red-500 px-8 text-center">
+                            <span>Could not load the selected dataset.</span>
+                            <span class="text-sm mt-2 text-neutral-400 normal-case">
+                                {String(datasetError() ?? "Unknown error")}
+                            </span>
                         </div>
                     </Match>
                     <Match when={!isLoaded()}>
-                        <div class="flex justify-center items-center h-full text-2xl">
+                        <div class="flex flex-col gap-3 justify-center items-center h-full text-2xl">
                             <LoadingIcon class="animate-spin h-10 w-10" />
+                            <Show when={generationProgress()}>
+                                {(progress) => (
+                                    <div class="text-center">
+                                        <div class="uppercase">
+                                            Building local{" "}
+                                            {config.dataTier.replace(
+                                                "_plus",
+                                                "+",
+                                            )}{" "}
+                                            data
+                                        </div>
+                                        <div class="text-base text-neutral-400 mt-1">
+                                            {progress().dataset ===
+                                            "current-patch"
+                                                ? "Current patch"
+                                                : "Last 30 days"}
+                                            : {progress().completedChampions}/
+                                            {progress().totalChampions}{" "}
+                                            champions
+                                        </div>
+                                    </div>
+                                )}
+                            </Show>
                         </div>
                     </Match>
                     <Match when={isLoaded()}>

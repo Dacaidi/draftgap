@@ -24,6 +24,7 @@ import {
 } from "../models/build/BuildDataset";
 import { Dataset } from "../models/dataset/Dataset";
 import { EntityStats } from "./entity-analysis";
+import { DEFAULT_DATA_TIER, type DataTier } from "../models/dataset/DataTier";
 
 function getRunesBuildData(
     dataset: Dataset,
@@ -294,6 +295,7 @@ function getLolalyticsChampionOptions(
     role: LolalyticsRole | "default" = "default",
     matchup?: string,
     matchupRole?: LolalyticsRole,
+    tier: DataTier = DEFAULT_DATA_TIER,
 ) {
     return {
         queryKey: [
@@ -304,6 +306,7 @@ function getLolalyticsChampionOptions(
             role,
             matchup,
             matchupRole,
+            tier,
         ],
         queryFn: () =>
             getLolalyticsChampion(
@@ -312,6 +315,7 @@ function getLolalyticsChampionOptions(
                 role,
                 matchup,
                 matchupRole,
+                tier,
             ),
         staleTime: 1000 * 60 * 60, // 1 hour
     } satisfies FetchQueryOptions;
@@ -323,6 +327,7 @@ export async function fetchBuildData(
     championKey: string,
     role: Role,
     opponentTeamComp: Map<Role, string>,
+    tier: DataTier = DEFAULT_DATA_TIER,
 ) {
     // convert patch from 13.7.1 to 13.7
     const patch = dataset.version.split(".").slice(0, 2).join(".");
@@ -332,11 +337,21 @@ export async function fetchBuildData(
             patch,
             championKey,
             LOLALYTICS_ROLES[role],
+            undefined,
+            undefined,
+            tier,
         ),
     );
 
     const champion30DaysDataPromises = queryClient.fetchQuery(
-        getLolalyticsChampionOptions("30", championKey, LOLALYTICS_ROLES[role]),
+        getLolalyticsChampionOptions(
+            "30",
+            championKey,
+            LOLALYTICS_ROLES[role],
+            undefined,
+            undefined,
+            tier,
+        ),
     );
 
     const matchup30DaysDataPromises = [...opponentTeamComp.entries()].map(
@@ -349,6 +364,7 @@ export async function fetchBuildData(
                         LOLALYTICS_ROLES[role],
                         opponentChampionKey,
                         LOLALYTICS_ROLES[opponentRole],
+                        tier,
                     ),
                 )
                 .then((championData) => ({
