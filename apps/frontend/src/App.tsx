@@ -40,6 +40,7 @@ import { buttonVariants } from "./components/common/Button";
 import { cn } from "./utils/style";
 import { LanguageDropdownMenu } from "./components/LanguageMenu";
 import { LocalDatasetUpdateDialog } from "./components/dialogs/LocalDatasetUpdateDialog";
+import { BanRecommendations } from "./components/draft/BanRecommendations";
 
 const App: Component = () => {
     const { config } = useUser();
@@ -189,6 +190,7 @@ const App: Component = () => {
                                             <FilterMenu />
                                             <AnalyzeHoverToggle />
                                         </div>
+                                        <BanRecommendations />
                                         <DraftTable />
                                     </div>
                                 </Match>
