@@ -39,6 +39,7 @@ import { useMedia } from "./hooks/useMedia";
 import { buttonVariants } from "./components/common/Button";
 import { cn } from "./utils/style";
 import { LanguageDropdownMenu } from "./components/LanguageMenu";
+import { LocalDatasetUpdateDialog } from "./components/dialogs/LocalDatasetUpdateDialog";
 
 const App: Component = () => {
     const { config } = useUser();
@@ -229,6 +230,7 @@ const App: Component = () => {
             }}
         >
             <UpdateDialog />
+            <LocalDatasetUpdateDialog />
             <Dialog open={showFAQ()} onOpenChange={setShowFAQ}>
                 <FAQDialog />
             </Dialog>

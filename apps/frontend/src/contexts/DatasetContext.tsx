@@ -26,10 +26,23 @@ import {
     saveLocalDataset,
     tauriDatasetFetch,
 } from "../api/local-dataset-api";
+import { getVersions } from "../../../dataset/src/riot";
+
+const LOCAL_DATASET_MAX_AGE_DAYS = 7;
+const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 
 type DatasetPair = {
     currentPatch: Dataset;
     thirtyDays: Dataset;
+};
+
+export type LocalDatasetUpdate = {
+    tier: DataTier;
+    currentVersion: string;
+    cachedVersion: string;
+    patchOutdated: boolean;
+    thirtyDaysStale: boolean;
+    thirtyDaysAgeDays?: number;
 };
 
 async function fetchRemoteDataset(name: "30-days" | "current-patch") {
@@ -72,6 +85,11 @@ function createDatasetContext() {
     const desktop = isTauri();
     const [generationProgress, setGenerationProgress] =
         createSignal<DatasetGenerationProgress>();
+    const [localDatasetUpdate, setLocalDatasetUpdate] =
+        createSignal<LocalDatasetUpdate>();
+    const [isCheckingLocalDatasetUpdate, setIsCheckingLocalDatasetUpdate] =
+        createSignal(false);
+    let updateCheckId = 0;
 
     if (desktop) {
         setDatasetFetch(tauriDatasetFetch);
@@ -123,6 +141,65 @@ function createDatasetContext() {
     const refreshLocalDatasets = () => refetch(true);
 
     createEffect(() => {
+        const datasetPair = datasets();
+        const tier = config.dataTier;
+        const checkId = ++updateCheckId;
+
+        setLocalDatasetUpdate(undefined);
+        setIsCheckingLocalDatasetUpdate(false);
+        if (
+            !desktop ||
+            tier === DEFAULT_DATA_TIER ||
+            datasetPair === undefined
+        ) {
+            return;
+        }
+
+        setIsCheckingLocalDatasetUpdate(true);
+        void getVersions()
+            .then((versions) => {
+                if (checkId !== updateCheckId) return;
+
+                const currentVersion = versions[0];
+                if (!currentVersion) return;
+
+                const generatedAt = new Date(
+                    datasetPair.thirtyDays.date,
+                ).getTime();
+                const thirtyDaysAgeDays = Number.isFinite(generatedAt)
+                    ? Math.floor(
+                          Math.max(0, Date.now() - generatedAt) /
+                              MILLISECONDS_PER_DAY,
+                      )
+                    : undefined;
+                const patchOutdated =
+                    datasetPair.currentPatch.version !== currentVersion;
+                const thirtyDaysStale =
+                    thirtyDaysAgeDays === undefined ||
+                    thirtyDaysAgeDays >= LOCAL_DATASET_MAX_AGE_DAYS;
+
+                if (!patchOutdated && !thirtyDaysStale) return;
+
+                setLocalDatasetUpdate({
+                    tier,
+                    currentVersion,
+                    cachedVersion: datasetPair.currentPatch.version,
+                    patchOutdated,
+                    thirtyDaysStale,
+                    thirtyDaysAgeDays,
+                });
+            })
+            .catch((error) => {
+                console.error("Could not check local dataset freshness", error);
+            })
+            .finally(() => {
+                if (checkId === updateCheckId) {
+                    setIsCheckingLocalDatasetUpdate(false);
+                }
+            });
+    });
+
+    createEffect(() => {
         (window as any).DRAFTGAP_DEBUG = (window as any).DRAFTGAP_DEBUG || {};
         (window as any).DRAFTGAP_DEBUG.dataset = dataset;
         (window as any).DRAFTGAP_DEBUG.dataset30Days = dataset30Days;
@@ -134,6 +211,8 @@ function createDatasetContext() {
         datasetState: () => datasets.state,
         datasetError: () => datasets.error,
         generationProgress,
+        localDatasetUpdate,
+        isCheckingLocalDatasetUpdate,
         isLoaded,
         refreshLocalDatasets,
     };
