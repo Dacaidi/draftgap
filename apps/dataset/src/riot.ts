@@ -16,6 +16,12 @@ export type RiotChampion = {
     i18n: Record<string, { name: string }>;
 };
 
+export function isStandardChampion(champion: Pick<RiotChampion, "id">) {
+    // League Classic uses the internal Jade_* champion IDs. These entries
+    // contain old kits and stats and are not part of modern ranked queues.
+    return !champion.id.startsWith("Jade_");
+}
+
 export async function getChampions(version: string, locale = "en_US") {
     const res = await datasetFetch(
         `https://ddragon.leagueoflegends.com/cdn/${version}/data/${locale}/champion.json`,
@@ -23,12 +29,12 @@ export async function getChampions(version: string, locale = "en_US") {
     const json = (await res.json()) as { data: Record<string, RiotChampion> };
 
     return Object.values(json.data)
-        .filter((v) => !v.id.startsWith("Jade_"))
         .map((v) => ({
             id: v.id,
             key: v.key,
             name: v.name,
-        }));
+        }))
+        .filter(isStandardChampion);
 }
 
 export type RiotRunePath = {

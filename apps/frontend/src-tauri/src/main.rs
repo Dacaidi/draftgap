@@ -9,6 +9,7 @@ use reqwest::Client;
 use serde::Serialize;
 use serde_json::Value;
 use std::path::PathBuf;
+use std::time::Duration;
 use tauri::{async_runtime::Mutex, Manager};
 
 struct AppState {
@@ -294,6 +295,8 @@ fn main() {
         .build()
         .expect("Could not build client");
     let dataset_client = Client::builder()
+        .connect_timeout(Duration::from_secs(10))
+        .timeout(Duration::from_secs(30))
         .redirect(reqwest::redirect::Policy::custom(|attempt| {
             if is_allowed_dataset_url(attempt.url()) {
                 attempt.follow()

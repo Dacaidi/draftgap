@@ -27,6 +27,9 @@ import {
 } from "@draftgap/core/src/models/dataset/DataTier";
 
 const BATCH_SIZE = 10;
+const MINIMUM_DATASET_COMPLETION_RATIO = 0.9;
+
+type ChampionDataFetcher = typeof getChampionDataFromLolalytics;
 
 // TODO: Move to Riot API if exists?
 const STAT_SHARD_DATA = {
@@ -117,7 +120,9 @@ export async function generateDatasets(
         ...c,
         i18n: {
             zh_CN: {
-                name: championsDataCn.find((c2) => c2.key === c.key)?.name,
+                name:
+                    championsDataCn.find((c2) => c2.key === c.key)?.name ??
+                    c.name,
             },
         },
     }));
@@ -252,6 +257,7 @@ export async function getDataset(
     tier: DataTier = DEFAULT_DATA_TIER,
     onProgress?: (completedChampions: number, totalChampions: number) => void,
     batchSize = BATCH_SIZE,
+    fetchChampionData: ChampionDataFetcher = getChampionDataFromLolalytics,
 ) {
     console.log("Getting dataset for version", version);
     const dataset: Dataset = {
@@ -271,18 +277,11 @@ export async function getDataset(
             )}`,
         );
         const batch = champions.slice(i, i + batchSize);
-        const championData = await Promise.all(
-            batch.map(
-                async (champion) =>
-                    [
-                        champion,
-                        await getChampionDataFromLolalytics(
-                            version,
-                            champion,
-                            tier,
-                        ),
-                    ] as const,
-            ),
+        const championData = await getChampionDataBatch(
+            version,
+            batch,
+            tier,
+            fetchChampionData,
         );
 
         for (const [c, champion] of championData) {
@@ -304,9 +303,43 @@ export async function getDataset(
         );
     }
 
+    const completedChampionCount = Object.keys(dataset.championData).length;
+    const minimumChampionCount = Math.ceil(
+        champions.length * MINIMUM_DATASET_COMPLETION_RATIO,
+    );
+    if (completedChampionCount < minimumChampionCount) {
+        throw new Error(
+            `Dataset generation only completed ${completedChampionCount} of ${champions.length} champions`,
+        );
+    }
+
     removeRankBias(dataset);
 
     return dataset;
+}
+
+export async function getChampionDataBatch(
+    version: string,
+    champions: RiotChampion[],
+    tier: DataTier,
+    fetchChampionData: ChampionDataFetcher = getChampionDataFromLolalytics,
+) {
+    return await Promise.all(
+        champions.map(async (champion) => {
+            try {
+                return [
+                    champion,
+                    await fetchChampionData(version, champion, tier),
+                ] as const;
+            } catch (error) {
+                console.error(
+                    `Skipping champion ${champion.id} after its data request failed`,
+                    error,
+                );
+                return [champion, undefined] as const;
+            }
+        }),
+    );
 }
 
 if (
