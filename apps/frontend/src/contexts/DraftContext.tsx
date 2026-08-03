@@ -12,6 +12,7 @@ import { useDraftView } from "./DraftViewContext";
 import { useMedia } from "../hooks/useMedia";
 import { useDataset } from "./DatasetContext";
 import { useDraftFilters } from "./DraftFiltersContext";
+import { resetTeamsAndSelectAlly } from "./reset-draft";
 
 type TeamPick = {
     championKey: string | undefined;
@@ -218,8 +219,7 @@ export function createDraftContext() {
 
     const resetAll = () => {
         batch(() => {
-            resetTeam("ally");
-            resetTeam("opponent");
+            resetTeamsAndSelectAlly(resetTeam, select);
         });
     };
 
