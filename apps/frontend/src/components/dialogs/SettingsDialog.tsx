@@ -14,6 +14,11 @@ import {
     StatsSite,
 } from "@draftgap/core/src/models/user/Config";
 import {
+    DataTiers,
+    displayNameByDataTier,
+    type DataTier,
+} from "@draftgap/core/src/models/dataset/DataTier";
+import {
     Dialog,
     DialogContent,
     DialogHeader,
@@ -21,15 +26,25 @@ import {
     DialogTrigger,
 } from "../common/Dialog";
 import { FAQDialog } from "./FAQDialog";
+import { useDataset } from "../../contexts/DatasetContext";
+import { Button } from "../common/Button";
 
 export default function SettingsDialog() {
     const { isDesktop } = useMedia();
     const { config, setConfig } = useUser();
+    const { datasetState, refreshLocalDatasets } = useDataset();
 
     const riskLevelOptions: ButtonGroupOption<RiskLevel>[] = RiskLevel.map(
         (level) => ({
             value: level,
             label: displayNameByRiskLevel[level],
+        }),
+    );
+
+    const dataTierOptions: ButtonGroupOption<DataTier>[] = DataTiers.map(
+        (tier) => ({
+            value: tier,
+            label: displayNameByDataTier[tier],
         }),
     );
 
@@ -106,6 +121,38 @@ export default function SettingsDialog() {
                         })
                     }
                 />
+                <Show when={isDesktop}>
+                    <div class="flex flex-col gap-1 mt-3">
+                        <span class="text-lg uppercase">Data rank</span>
+                        <ButtonGroup
+                            options={dataTierOptions}
+                            selected={config.dataTier}
+                            size="sm"
+                            class="flex-wrap"
+                            disabled={
+                                datasetState() === "pending" ||
+                                datasetState() === "refreshing"
+                            }
+                            onChange={(dataTier) => setConfig({ dataTier })}
+                        />
+                        <span class="text-sm text-neutral-400">
+                            Every rank is downloaded from the daily GitHub
+                            dataset and cached on this device. Local generation
+                            is only used when no download or cache is available.
+                        </span>
+                        <Button
+                            variant="secondary"
+                            disabled={
+                                datasetState() === "pending" ||
+                                datasetState() === "refreshing"
+                            }
+                            onClick={() => refreshLocalDatasets()}
+                            class="self-start mt-1"
+                        >
+                            Check for data update
+                        </Button>
+                    </div>
+                </Show>
             </div>
             <div>
                 <h3 class="text-3xl uppercase">UI</h3>

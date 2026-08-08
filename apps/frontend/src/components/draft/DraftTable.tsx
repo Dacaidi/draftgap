@@ -8,12 +8,21 @@ import {
     SortingState,
 } from "@tanstack/solid-table";
 import { useDraft } from "../../contexts/DraftContext";
-import { Role } from "@draftgap/core/src/models/Role";
+import { displayNameByRole, Role } from "@draftgap/core/src/models/Role";
 import { Suggestion } from "@draftgap/core/src/draft/suggestions";
+import { getDirectMatchup } from "@draftgap/core/src/draft/direct-matchup";
 import { Table } from "../common/Table";
 import ChampionCell from "../common/ChampionCell";
 import { RoleCell } from "../common/RoleCell";
-import { batch, createSignal, onCleanup, onMount, Show } from "solid-js";
+import {
+    batch,
+    createMemo,
+    createSignal,
+    For,
+    onCleanup,
+    onMount,
+    Show,
+} from "solid-js";
 import { Icon } from "solid-heroicons";
 import { star } from "solid-heroicons/solid";
 import { star as starOutline } from "solid-heroicons/outline";
@@ -28,9 +37,12 @@ import { Dialog } from "../common/Dialog";
 import { ChampionDraftAnalysisDialog } from "../dialogs/ChampionDraftAnalysisDialog";
 import { Team } from "@draftgap/core/src/models/Team";
 import { championName } from "../../utils/i18n";
+import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
+import { formatPercentage } from "../../utils/rating";
+import { RoleIcon } from "../icons/roles/RoleIcon";
 
 export default function DraftTable() {
-    const { dataset } = useDataset();
+    const { dataset, dataset30Days } = useDataset();
     const { selection, pickChampion, select, bans, ownedChampions } =
         useDraft();
     const {
@@ -41,12 +53,37 @@ export default function DraftTable() {
         setFavouriteFilter,
     } = useDraftFilters();
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
+    const { allyTeamComp, opponentTeamComp } = useDraftAnalysis();
     const { isFavourite, setFavourite, config } = useUser();
 
     const suggestions = () =>
         selection.team === "opponent"
             ? opponentSuggestions()
             : allySuggestions();
+    const opposingTeamComp = () =>
+        selection.team === "opponent" ? allyTeamComp() : opponentTeamComp();
+    const directMatchup = (suggestion: Suggestion) =>
+        dataset30Days()
+            ? getDirectMatchup(
+                  dataset30Days()!,
+                  suggestion.championKey,
+                  suggestion.role,
+                  opposingTeamComp(),
+              )
+            : undefined;
+    const matchupAssumptions = createMemo(() => {
+        const suggestionRoles = new Set(
+            suggestions().map((suggestion) => suggestion.role),
+        );
+
+        return [...opposingTeamComp()]
+            .filter(
+                ([role]) =>
+                    suggestionRoles.has(role) &&
+                    (roleFilter() === undefined || roleFilter() === role),
+            )
+            .sort(([roleA], [roleB]) => roleA - roleB);
+    });
 
     const ownsChampion = (championKey: string) =>
         // If we don't have owned champions, we are not logged in, so we own all champions.
@@ -307,11 +344,34 @@ export default function DraftTable() {
         {
             header: "Winrate",
             accessorFn: (suggestion) => suggestion.draftResult.totalRating,
-            cell: (info) => (
-                <div class="flex justify-end">
-                    <RatingText rating={info.getValue<number>()} />
-                </div>
-            ),
+            cell: (info) => {
+                const matchup = () => directMatchup(info.row.original);
+
+                return (
+                    <div class="flex items-baseline justify-end gap-2">
+                        <RatingText rating={info.getValue<number>()} />
+                        <Show when={matchup()}>
+                            <span
+                                class="text-[0.7em] tabular-nums text-neutral-400"
+                                title={`${formatPercentage(
+                                    matchup()!.winrate,
+                                )}% versus ${championName(
+                                    dataset()!.championData[
+                                        matchup()!.opponentChampionKey
+                                    ],
+                                    config,
+                                )} ${
+                                    displayNameByRole[info.row.original.role]
+                                }; ${Math.round(
+                                    matchup()!.games,
+                                ).toLocaleString()} games over the last 30 days`}
+                            >
+                                ({formatPercentage(matchup()!.winrate)})
+                            </span>
+                        </Show>
+                    </div>
+                );
+            },
         },
         {
             id: "actions",
@@ -427,6 +487,26 @@ export default function DraftTable() {
 
     return (
         <>
+            <Show when={matchupAssumptions().length > 0}>
+                <div class="mb-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs uppercase text-neutral-500">
+                    <span>Matchup assumptions</span>
+                    <For each={matchupAssumptions()}>
+                        {([role, championKey]) => (
+                            <span class="inline-flex items-center gap-1 text-neutral-300">
+                                <RoleIcon role={role} class="h-4 w-4" />
+                                {displayNameByRole[role]}:{" "}
+                                {championName(
+                                    dataset()!.championData[championKey],
+                                    config,
+                                )}
+                            </span>
+                        )}
+                    </For>
+                    <span class="normal-case text-neutral-600">
+                        Click an opponent role to override
+                    </span>
+                </div>
+            </Show>
             <Table
                 table={table}
                 onClickRow={pick}

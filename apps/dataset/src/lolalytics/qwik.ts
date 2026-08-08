@@ -1,5 +1,9 @@
-import { retry } from "../utils";
 import { type LolalyticsRole } from "./roles";
+import {
+    DEFAULT_DATA_TIER,
+    type DataTier,
+} from "@draftgap/core/src/models/dataset/DataTier";
+import { datasetFetch } from "../fetch";
 
 export type QwikLolalyticsData = {
     header: Header;
@@ -287,6 +291,7 @@ export async function getLolalyticsQwikChampion(
     role?: LolalyticsRole,
     matchupId?: string,
     matchupRole?: LolalyticsRole,
+    tier: DataTier = DEFAULT_DATA_TIER,
 ) {
     championId = championId.toLowerCase();
     if (championId === "monkeyking") {
@@ -303,7 +308,7 @@ export async function getLolalyticsQwikChampion(
     patch = patch.split(".").slice(0, 2).join(".");
 
     const queryParams = new URLSearchParams();
-    queryParams.append("tier", "emerald_plus");
+    queryParams.append("tier", tier);
     queryParams.append("region", "all");
     queryParams.append("patch", patch);
     if (role) {
@@ -316,12 +321,7 @@ export async function getLolalyticsQwikChampion(
     }
 
     const url = `https://lolalytics.com/lol/${championId}/${vsUrl}build/?${queryParams.toString()}`;
-    const res = await retry(() => fetch(url));
-    if (!res.ok) {
-        throw new Error(
-            "Failed to fetch lolalytics champion " + url + " " + res.status,
-        );
-    }
+    const res = await datasetFetch(url);
 
     const text = await res.text();
     if (!text) {

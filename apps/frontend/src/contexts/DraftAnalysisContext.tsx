@@ -26,25 +26,28 @@ export function createDraftAnalysisContext() {
 
     const [analyzeHovers, setAnalyzeHovers] = createSignal(false);
 
-    function getTeamCompsForTeam(team: Team) {
+    function getTeamCompsForTeam(team: Team, includeHovers = analyzeHovers()) {
         if (!isLoaded()) return [];
 
         const picks = team === "ally" ? allyTeam : opponentTeam;
 
-        const championData = picks
-            .filter(
-                (pick) =>
-                    pick.championKey || (pick.hoverKey && analyzeHovers()),
-            )
-            .map((pick) => ({
-                ...dataset()!.championData[pick.championKey || pick.hoverKey!],
-                role: pick.role,
-            }));
+        const championData = picks.flatMap((pick) => {
+            const championKey =
+                pick.championKey ?? (includeHovers ? pick.hoverKey : undefined);
+            const champion = championKey
+                ? dataset()!.championData[championKey]
+                : undefined;
+
+            return champion ? [{ ...champion, role: pick.role }] : [];
+        });
         return getTeamComps(championData);
     }
 
     const allyTeamComps = createMemo(() => getTeamCompsForTeam("ally"));
     const opponentTeamComps = createMemo(() => getTeamCompsForTeam("opponent"));
+    const allyTeamCompsWithHovers = createMemo(() =>
+        getTeamCompsForTeam("ally", true),
+    );
     const allyTeamComp = createMemo(
         () =>
             allyTeamComps().at(0)?.[0] ??
@@ -54,6 +57,13 @@ export function createDraftAnalysisContext() {
         () =>
             opponentTeamComps().at(0)?.[0] ??
             (new Map() as ReturnType<typeof opponentTeamComps>[number][0]),
+    );
+    const allyTeamCompWithHovers = createMemo(
+        () =>
+            allyTeamCompsWithHovers().at(0)?.[0] ??
+            (new Map() as ReturnType<
+                typeof allyTeamCompsWithHovers
+            >[number][0]),
     );
 
     const allyRoles = createMemo(() => predictRoles(allyTeamComps()));
@@ -180,6 +190,7 @@ export function createDraftAnalysisContext() {
         allyTeamComps,
         opponentTeamComps,
         allyTeamComp,
+        allyTeamCompWithHovers,
         opponentTeamComp,
         allyRoles,
         opponentRoles,

@@ -1,4 +1,5 @@
 import { RiskLevel } from "../../risk/risk-level";
+import { DataTier } from "../dataset/DataTier";
 
 export type StatsSite = "op.gg" | "u.gg" | "lolalytics";
 
@@ -15,6 +16,7 @@ export type DraftGapConfig = {
     ignoreChampionWinrates: boolean;
     riskLevel: RiskLevel;
     minGames: number;
+    dataTier: DataTier;
 
     // DRAFT SUGGESTIONS
     showFavouritesAtTop: boolean;

@@ -1,5 +1,9 @@
-import { retry } from "../utils";
 import type { LolalyticsRole } from "./roles";
+import {
+    DEFAULT_DATA_TIER,
+    type DataTier,
+} from "@draftgap/core/src/models/dataset/DataTier";
+import { datasetFetch } from "../fetch";
 
 export interface LolalyticsChampion2Response {
     skills: Skills;
@@ -55,6 +59,7 @@ export async function getLolalyticsChampion2(
     role: LolalyticsRole | "default" = "default",
     matchup?: string,
     matchupRole?: LolalyticsRole,
+    tier: DataTier = DEFAULT_DATA_TIER,
 ) {
     // convert patch from 12.21.1 to 12.21
     patch = patch.split(".").slice(0, 2).join(".");
@@ -63,7 +68,7 @@ export async function getLolalyticsChampion2(
     queryParams.append("ep", "champion2");
     queryParams.append("p", "d");
     queryParams.append("v", "1");
-    queryParams.append("tier", "emerald_plus");
+    queryParams.append("tier", tier);
     queryParams.append("queue", "420");
     queryParams.append("region", "all");
     queryParams.append("patch", patch);
@@ -74,8 +79,8 @@ export async function getLolalyticsChampion2(
         queryParams.append("vslane", matchupRole);
     }
 
-    const res = await retry(() =>
-        fetch(`https://ax.lolalytics.com/mega/?${queryParams.toString()}`),
+    const res = await datasetFetch(
+        `https://ax.lolalytics.com/mega/?${queryParams.toString()}`,
     );
 
     const json = (await res.json()) as LolalyticsChampion2Response;

@@ -11,6 +11,7 @@ interface Props<T> {
     selected: T;
     onChange: (value: T) => void;
     size?: "sm" | "md";
+    disabled?: boolean;
 }
 
 export function ButtonGroup<T>(
@@ -22,6 +23,7 @@ export function ButtonGroup<T>(
         "selected",
         "onChange",
         "size",
+        "disabled",
     ]);
     return (
         <div
@@ -35,6 +37,7 @@ export function ButtonGroup<T>(
                 {(option, i) => (
                     <button
                         type="button"
+                        disabled={props.disabled}
                         class={cn(
                             "uppercase leading-4 relative inline-flex items-center border text-neutral-300 border-neutral-700 bg-primary px-3 font-medium hover:bg-neutral-600 focus:z-10 py-3 transition-all ease-in-out duration-150",
                             {
@@ -45,6 +48,8 @@ export function ButtonGroup<T>(
                                 "text-white bg-neutral-700":
                                     props.selected === option.value,
                                 "py-2": props.size === "sm",
+                                "cursor-not-allowed opacity-50 hover:bg-primary":
+                                    props.disabled,
                             },
                         )}
                         onClick={() => props.onChange(option.value)}

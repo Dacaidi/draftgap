@@ -175,10 +175,7 @@ export const createLolClientContext = () => {
                 return true;
             } else {
                 let championKey = undefined;
-                if (
-                    selection.championPickIntent &&
-                    selection.summonerId !== currentSummoner.summonerId
-                ) {
+                if (selection.championPickIntent) {
                     championKey = selection.championPickIntent.toString();
                 }
                 if (teamPicks[index].hoverKey !== championKey) {
@@ -368,6 +365,21 @@ export const createLolClientContext = () => {
         setClientState(ClientState.Disabled);
     };
 
+    const isBanPhase = () => {
+        if (clientState() !== ClientState.InChampSelect) return false;
+
+        const actionGroups = champSelectSession.actions;
+        const activeGroup =
+            actionGroups.find((group) =>
+                group.some((action) => action.isInProgress),
+            ) ??
+            actionGroups.find((group) =>
+                group.some((action) => !action.completed),
+            );
+
+        return activeGroup?.some((action) => action.type === "ban") ?? false;
+    };
+
     onCleanup(() => {
         stopLolClientIntegration();
         setClientState(ClientState.NotFound);
@@ -379,6 +391,7 @@ export const createLolClientContext = () => {
         startLolClientIntegration,
         stopLolClientIntegration,
         clientError,
+        isBanPhase,
     };
 };
 

@@ -29,6 +29,8 @@ export function deleteDatasetMatchupSynergyData(dataset: Dataset) {
 
 export function removeRankBias(dataset: Dataset) {
     function getNewWins(wins: number, games: number, rankRating: number) {
+        if (games === 0) return 0;
+
         return (
             ratingToWinrate(winrateToRating(wins / games) - rankRating) * games
         );
