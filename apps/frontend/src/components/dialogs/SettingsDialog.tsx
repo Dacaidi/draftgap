@@ -17,7 +17,6 @@ import {
     DataTiers,
     displayNameByDataTier,
     type DataTier,
-    DEFAULT_DATA_TIER,
 } from "@draftgap/core/src/models/dataset/DataTier";
 import {
     Dialog,
@@ -137,22 +136,21 @@ export default function SettingsDialog() {
                             onChange={(dataTier) => setConfig({ dataTier })}
                         />
                         <span class="text-sm text-neutral-400">
-                            Emerald+ uses DraftGap's online dataset. Other ranks
-                            are generated once and stored on this device.
+                            Every rank is downloaded from the daily GitHub
+                            dataset and cached on this device. Local generation
+                            is only used when no download or cache is available.
                         </span>
-                        <Show when={config.dataTier !== DEFAULT_DATA_TIER}>
-                            <Button
-                                variant="secondary"
-                                disabled={
-                                    datasetState() === "pending" ||
-                                    datasetState() === "refreshing"
-                                }
-                                onClick={() => refreshLocalDatasets()}
-                                class="self-start mt-1"
-                            >
-                                Rebuild local data
-                            </Button>
-                        </Show>
+                        <Button
+                            variant="secondary"
+                            disabled={
+                                datasetState() === "pending" ||
+                                datasetState() === "refreshing"
+                            }
+                            onClick={() => refreshLocalDatasets()}
+                            class="self-start mt-1"
+                        >
+                            Check for data update
+                        </Button>
                     </div>
                 </Show>
             </div>

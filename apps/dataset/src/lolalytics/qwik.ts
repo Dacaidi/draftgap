@@ -1,4 +1,3 @@
-import { retry } from "../utils";
 import { type LolalyticsRole } from "./roles";
 import {
     DEFAULT_DATA_TIER,
@@ -322,12 +321,7 @@ export async function getLolalyticsQwikChampion(
     }
 
     const url = `https://lolalytics.com/lol/${championId}/${vsUrl}build/?${queryParams.toString()}`;
-    const res = await retry(() => datasetFetch(url));
-    if (!res.ok) {
-        throw new Error(
-            "Failed to fetch lolalytics champion " + url + " " + res.status,
-        );
-    }
+    const res = await datasetFetch(url);
 
     const text = await res.text();
     if (!text) {

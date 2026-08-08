@@ -51,6 +51,7 @@ const App: Component = () => {
         datasetState,
         datasetError,
         generationProgress,
+        hostedDatasetStatus,
     } = useDataset();
     const { analysisPick, setAnalysisPick, showAnalysisPick } =
         useDraftAnalysis();
@@ -97,6 +98,15 @@ const App: Component = () => {
                     <Match when={!isLoaded()}>
                         <div class="flex flex-col gap-3 justify-center items-center h-full text-2xl">
                             <LoadingIcon class="animate-spin h-10 w-10" />
+                            <Show when={hostedDatasetStatus()}>
+                                {(status) => (
+                                    <div class="text-center uppercase">
+                                        {status() === "checking"
+                                            ? "Checking daily hosted data"
+                                            : `Downloading ${config.dataTier.replace("_plus", "+")} data from GitHub`}
+                                    </div>
+                                )}
+                            </Show>
                             <Show when={generationProgress()}>
                                 {(progress) => (
                                     <div class="text-center">

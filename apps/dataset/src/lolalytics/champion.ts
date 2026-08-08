@@ -1,4 +1,3 @@
-import { retry } from "../utils";
 import { type LolalyticsRole } from "./roles";
 import {
     DEFAULT_DATA_TIER,
@@ -253,7 +252,7 @@ export async function getLolalyticsChampion(
     }
 
     const url = `https://ax.lolalytics.com/mega/?${queryParams.toString()}`;
-    const res = await retry(() => datasetFetch(url));
+    const res = await datasetFetch(url);
 
     const text = await res.text();
     if (!text) {

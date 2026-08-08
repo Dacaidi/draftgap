@@ -1,4 +1,3 @@
-import { retry } from "../utils";
 import type { LolalyticsRole } from "./roles";
 import {
     DEFAULT_DATA_TIER,
@@ -80,10 +79,8 @@ export async function getLolalyticsChampion2(
         queryParams.append("vslane", matchupRole);
     }
 
-    const res = await retry(() =>
-        datasetFetch(
-            `https://ax.lolalytics.com/mega/?${queryParams.toString()}`,
-        ),
+    const res = await datasetFetch(
+        `https://ax.lolalytics.com/mega/?${queryParams.toString()}`,
     );
 
     const json = (await res.json()) as LolalyticsChampion2Response;

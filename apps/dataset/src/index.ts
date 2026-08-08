@@ -21,12 +21,13 @@ import {
     type RiotSummonerSpell,
 } from "./riot";
 import type { SummonerSpellData } from "@draftgap/core/src/models/dataset/SummonerSpellData";
+import type { ChampionData } from "@draftgap/core/src/models/dataset/ChampionData";
 import {
     DEFAULT_DATA_TIER,
     type DataTier,
 } from "@draftgap/core/src/models/dataset/DataTier";
 
-const BATCH_SIZE = 10;
+export const CHAMPION_GENERATION_CONCURRENCY = 8;
 const MINIMUM_DATASET_COMPLETION_RATIO = 0.9;
 
 type ChampionDataFetcher = typeof getChampionDataFromLolalytics;
@@ -99,10 +100,41 @@ export type DatasetGenerationProgress = {
     totalChampions: number;
 };
 
+export type DatasetGenerationName = DatasetGenerationProgress["dataset"];
+
+export type DatasetCheckpointContext = {
+    dataset: DatasetGenerationName;
+    queryVersion: string;
+    riotVersion: string;
+    tier: DataTier;
+};
+
+export type DatasetCheckpointSnapshot = {
+    checkpointId: string;
+    createdAt: string;
+    championData: Record<string, ChampionData>;
+};
+
+export type DatasetCheckpointStore = {
+    prepare: (
+        context: DatasetCheckpointContext,
+    ) => Promise<DatasetCheckpointSnapshot>;
+    saveChampion: (
+        context: DatasetCheckpointContext,
+        checkpointId: string,
+        champion: ChampionData,
+    ) => Promise<void>;
+};
+
+export type DatasetGenerationOptions = {
+    onProgress?: (progress: DatasetGenerationProgress) => void;
+    championConcurrency?: number;
+    checkpointStore?: DatasetCheckpointStore;
+};
+
 export async function generateDatasets(
     tier: DataTier,
-    onProgress?: (progress: DatasetGenerationProgress) => void,
-    batchSize = BATCH_SIZE,
+    options: DatasetGenerationOptions = {},
 ) {
     const currentVersion = (await getVersions())[0];
     console.log("Patch:", currentVersion);
@@ -127,36 +159,53 @@ export async function generateDatasets(
         },
     }));
 
-    const datasetCurrentPatch = await getDataset(
+    const generateDataset = async (
+        dataset: DatasetGenerationName,
+        queryVersion: string,
+    ) => {
+        const checkpointContext: DatasetCheckpointContext = {
+            dataset,
+            queryVersion,
+            riotVersion: currentVersion,
+            tier,
+        };
+        const checkpoint =
+            await options.checkpointStore?.prepare(checkpointContext);
+
+        return await getDataset(
+            queryVersion,
+            champions,
+            runes,
+            items,
+            summonerSpells,
+            tier,
+            {
+                onProgress: (completedChampions, totalChampions) =>
+                    options.onProgress?.({
+                        dataset,
+                        completedChampions,
+                        totalChampions,
+                    }),
+                championConcurrency: options.championConcurrency,
+                initialChampionData: checkpoint?.championData,
+                date: checkpoint?.createdAt,
+                onChampionComplete: options.checkpointStore
+                    ? (champion) =>
+                          options.checkpointStore!.saveChampion(
+                              checkpointContext,
+                              checkpoint!.checkpointId,
+                              champion,
+                          )
+                    : undefined,
+            },
+        );
+    };
+
+    const datasetCurrentPatch = await generateDataset(
+        "current-patch",
         currentVersion,
-        champions,
-        runes,
-        items,
-        summonerSpells,
-        tier,
-        (completedChampions, totalChampions) =>
-            onProgress?.({
-                dataset: "current-patch",
-                completedChampions,
-                totalChampions,
-            }),
-        batchSize,
     );
-    const dataset30days = await getDataset(
-        "30",
-        champions,
-        runes,
-        items,
-        summonerSpells,
-        tier,
-        (completedChampions, totalChampions) =>
-            onProgress?.({
-                dataset: "30-days",
-                completedChampions,
-                totalChampions,
-            }),
-        batchSize,
-    );
+    const dataset30days = await generateDataset("30-days", "30");
 
     deleteDatasetMatchupSynergyData(datasetCurrentPatch);
 
@@ -248,6 +297,15 @@ function riotSummonerSpellsToSummonerSpellData(
     );
 }
 
+export type GetDatasetOptions = {
+    onProgress?: (completedChampions: number, totalChampions: number) => void;
+    championConcurrency?: number;
+    fetchChampionData?: ChampionDataFetcher;
+    initialChampionData?: Record<string, ChampionData>;
+    onChampionComplete?: (champion: ChampionData) => Promise<void>;
+    date?: string;
+};
+
 export async function getDataset(
     version: string,
     champions: RiotChampion[],
@@ -255,14 +313,12 @@ export async function getDataset(
     items: Record<string, RiotItem>,
     summonerSpells: Record<string, RiotSummonerSpell>,
     tier: DataTier = DEFAULT_DATA_TIER,
-    onProgress?: (completedChampions: number, totalChampions: number) => void,
-    batchSize = BATCH_SIZE,
-    fetchChampionData: ChampionDataFetcher = getChampionDataFromLolalytics,
+    options: GetDatasetOptions = {},
 ) {
     console.log("Getting dataset for version", version);
     const dataset: Dataset = {
         version: version,
-        date: new Date().toISOString(),
+        date: options.date ?? new Date().toISOString(),
         championData: {},
         ...riotRunesToRuneData(runes),
         itemData: riotItemsToItemData(items),
@@ -270,38 +326,64 @@ export async function getDataset(
             riotSummonerSpellsToSummonerSpellData(summonerSpells),
     };
 
-    for (let i = 0; i < champions.length; i += batchSize) {
-        console.log(
-            `Processing batch ${i / batchSize} of ${Math.ceil(
-                champions.length / batchSize,
-            )}`,
-        );
-        const batch = champions.slice(i, i + batchSize);
-        const championData = await getChampionDataBatch(
-            version,
-            batch,
-            tier,
-            fetchChampionData,
-        );
+    const championKeys = new Set(champions.map((champion) => champion.key));
+    for (const [key, champion] of Object.entries(
+        options.initialChampionData ?? {},
+    )) {
+        if (championKeys.has(key) && champion.key === key) {
+            dataset.championData[key] = champion;
+        }
+    }
 
-        for (const [c, champion] of championData) {
-            if (!champion) {
+    const pendingChampions = champions.filter(
+        (champion) => dataset.championData[champion.key] === undefined,
+    );
+    const fetchChampionData =
+        options.fetchChampionData ?? getChampionDataFromLolalytics;
+    const requestedConcurrency =
+        options.championConcurrency ?? CHAMPION_GENERATION_CONCURRENCY;
+    const championConcurrency = Math.max(1, Math.floor(requestedConcurrency));
+    let completedChampions = champions.length - pendingChampions.length;
+    let nextChampionIndex = 0;
+
+    options.onProgress?.(completedChampions, champions.length);
+
+    const worker = async () => {
+        while (true) {
+            const championIndex = nextChampionIndex++;
+            const champion = pendingChampions[championIndex];
+            if (!champion) return;
+
+            const [[, championData]] = await getChampionDataBatch(
+                version,
+                [champion],
+                tier,
+                fetchChampionData,
+            );
+
+            if (!championData) {
                 console.log(
-                    "Skipping champion " +
-                        c.name +
-                        " as it lolalytics has no data for it",
+                    `Skipping champion ${champion.name} as Lolalytics has no data for it`,
                 );
-                continue;
+            } else {
+                await options.onChampionComplete?.(championData);
+                dataset.championData[championData.key] = championData;
             }
 
-            dataset.championData[champion.key] = champion;
+            completedChampions++;
+            options.onProgress?.(completedChampions, champions.length);
         }
+    };
 
-        onProgress?.(
-            Math.min(i + batch.length, champions.length),
-            champions.length,
-        );
-    }
+    const workerResults = await Promise.allSettled(
+        Array.from({
+            length: Math.min(championConcurrency, pendingChampions.length),
+        }).map(worker),
+    );
+    const failedWorker = workerResults.find(
+        (result) => result.status === "rejected",
+    );
+    if (failedWorker?.status === "rejected") throw failedWorker.reason;
 
     const completedChampionCount = Object.keys(dataset.championData).length;
     const minimumChampionCount = Math.ceil(
@@ -325,20 +407,13 @@ export async function getChampionDataBatch(
     fetchChampionData: ChampionDataFetcher = getChampionDataFromLolalytics,
 ) {
     return await Promise.all(
-        champions.map(async (champion) => {
-            try {
-                return [
+        champions.map(
+            async (champion) =>
+                [
                     champion,
                     await fetchChampionData(version, champion, tier),
-                ] as const;
-            } catch (error) {
-                console.error(
-                    `Skipping champion ${champion.id} after its data request failed`,
-                    error,
-                );
-                return [champion, undefined] as const;
-            }
-        }),
+                ] as const,
+        ),
     );
 }
 

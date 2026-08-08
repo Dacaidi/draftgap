@@ -86,11 +86,13 @@ export function FAQDialog() {
                     How does rank filtering work?
                 </h2>
                 <p class="font-body">
-                    The default Emerald+ dataset is downloaded from DraftGap. In
-                    the desktop app, other ranks are generated from Lolalytics
-                    and stored locally on this device. The initial generation
-                    can take a while. Higher ranks also have smaller sample
-                    sizes, which can make predictions less reliable.
+                    In the desktop app, every rank is downloaded from a dataset
+                    generated daily on GitHub and cached on this device. If the
+                    hosted copy is unavailable, DraftGap keeps using the last
+                    complete cache. It only generates data locally when neither
+                    a download nor a cache is available. Higher ranks have
+                    smaller sample sizes, which can make predictions less
+                    reliable.
                 </p>
             </div>
 

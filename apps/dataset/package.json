@@ -3,6 +3,7 @@
     "version": "3.2.1",
     "scripts": {
         "start": "bun run src/index.ts",
+        "generate-hosted": "bun run src/generate-hosted-dataset.ts",
         "typecheck": "tsc --noEmit",
         "format": "bunx prettier . --write"
     },

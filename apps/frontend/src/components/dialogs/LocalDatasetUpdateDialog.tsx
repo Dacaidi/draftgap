@@ -33,7 +33,7 @@ export function LocalDatasetUpdateDialog() {
         return key !== undefined && dismissedUpdate() !== key;
     };
     const dismiss = () => setDismissedUpdate(updateKey());
-    const rebuild = () => {
+    const downloadUpdate = () => {
         dismiss();
         void refreshLocalDatasets();
     };
@@ -47,7 +47,7 @@ export function LocalDatasetUpdateDialog() {
         >
             <DialogContent canClose={false}>
                 <DialogHeader>
-                    <DialogTitle>Local data update available</DialogTitle>
+                    <DialogTitle>Dataset update available</DialogTitle>
                 </DialogHeader>
                 <p class="text-xl uppercase text-neutral-300">
                     Your{" "}
@@ -75,16 +75,17 @@ export function LocalDatasetUpdateDialog() {
                         </p>
                     </Show>
                     <p class="text-sm text-neutral-400">
-                        Rebuilding fetches fresh data from Lolalytics and can
-                        take a while. It will only start after you confirm.
+                        DraftGap will check your daily GitHub dataset and
+                        download it when a newer copy is available. Your last
+                        complete cache stays available if the download fails.
                     </p>
                 </div>
                 <DialogFooter>
                     <Button variant="secondary" onClick={dismiss}>
                         Later
                     </Button>
-                    <Button variant="primary" onClick={rebuild}>
-                        Rebuild now
+                    <Button variant="primary" onClick={downloadUpdate}>
+                        Download update
                     </Button>
                 </DialogFooter>
             </DialogContent>
