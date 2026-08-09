@@ -68,7 +68,7 @@ export function FAQDialog() {
             <div>
                 <h2 class="text-2xl uppercase">Where is the data from?</h2>
                 <p class="font-body">
-                    The data used are the current Emerald+{" "}
+                    Statistical data comes from{" "}
                     <a
                         href="https://lolalytics.com"
                         class="text-blue-500"
@@ -76,8 +76,10 @@ export function FAQDialog() {
                     >
                         Lolalytics
                     </a>{" "}
-                    solo/duo winrates from all regions of the last 30 days. The
-                    data is updated every 12 hours.
+                    solo/duo games across all regions. The desktop app supports
+                    Gold, Gold+, Platinum, Platinum+, Emerald, Emerald+,
+                    Diamond, and Diamond+. Hosted current-patch and 30-day data
+                    for each tier is generated daily on GitHub.
                 </p>
             </div>
 
@@ -86,13 +88,14 @@ export function FAQDialog() {
                     How does rank filtering work?
                 </h2>
                 <p class="font-body">
-                    In the desktop app, every rank is downloaded from a dataset
-                    generated daily on GitHub and cached on this device. If the
-                    hosted copy is unavailable, DraftGap keeps using the last
-                    complete cache. It only generates data locally when neither
-                    a download nor a cache is available. Higher ranks have
-                    smaller sample sizes, which can make predictions less
-                    reliable.
+                    The desktop app downloads only the selected tier and keeps a
+                    complete local cache. If the hosted copy is unavailable,
+                    DraftGap keeps using that cache. Emerald+ also has the
+                    original DraftGap dataset as an extra remote fallback when
+                    no local cache is available. If no remote source or cache
+                    can be used, the selected tier is generated locally. Higher
+                    ranks have smaller sample sizes, which can make predictions
+                    less reliable.
                 </p>
             </div>
 
