@@ -196,7 +196,6 @@ export default function DraftTable() {
                     {
                         updateSelection: false,
                         resetFilters: false,
-                        reportEvent: false,
                         updateView: false,
                     },
                 );
@@ -215,7 +214,6 @@ export default function DraftTable() {
                     {
                         updateSelection: false,
                         resetFilters: false,
-                        reportEvent: false,
                         updateView: false,
                     },
                 );

@@ -9,7 +9,6 @@ import type {
     DatasetGenerationName,
 } from "../../../dataset/src/index";
 
-type DatasetName = "current-patch" | "30-days";
 const LOCAL_DATASET_CHECKPOINT_FORMAT_VERSION = 1;
 const LOCAL_DATASET_CHECKPOINT_MAX_AGE_MS = 36 * 60 * 60 * 1000;
 
@@ -28,6 +27,7 @@ type LocalDatasetCheckpointMetadata = {
     queryVersion: string;
     riotVersion: string;
     createdAt: string;
+    createdAtMs?: number;
 };
 
 type LocalDatasetCheckpoint = {
@@ -75,27 +75,6 @@ export async function tauriDatasetFetchWithTimeout(
 
 export const tauriDatasetFetch: DatasetFetch = (input, init) =>
     tauriDatasetFetchWithTimeout(input, init);
-
-export async function loadLocalDataset(tier: DataTier, name: DatasetName) {
-    return await invoke<string | null>("load_local_dataset", {
-        datasetVersion: DATASET_VERSION,
-        tier,
-        name,
-    });
-}
-
-export async function saveLocalDataset(
-    tier: DataTier,
-    name: DatasetName,
-    contents: string,
-) {
-    await invoke("save_local_dataset", {
-        datasetVersion: DATASET_VERSION,
-        tier,
-        name,
-        contents,
-    });
-}
 
 export async function loadLocalDatasetPair(tier: DataTier) {
     return await invoke<LocalDatasetPair | null>("load_local_dataset_pair", {
@@ -284,6 +263,7 @@ export function createLocalDatasetCheckpointStore(): LocalDatasetCheckpointStore
                 queryVersion: context.queryVersion,
                 riotVersion: context.riotVersion,
                 createdAt: new Date().toISOString(),
+                createdAtMs: Date.now(),
             };
             await initializeLocalDatasetCheckpoint(metadata);
             activeCheckpoints.set(context.dataset, {

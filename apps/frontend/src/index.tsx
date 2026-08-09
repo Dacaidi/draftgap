@@ -5,7 +5,6 @@ import "./index.css";
 import App from "./App";
 import { DraftProvider } from "./contexts/DraftContext";
 import { LolClientProvider } from "./contexts/LolClientContext";
-import { setupAnalytics } from "./utils/analytics";
 import { TooltipProvider } from "./contexts/TooltipContext";
 import { Toaster } from "solid-toast";
 import { setupMobileVH } from "./utils/mobile";
@@ -20,7 +19,6 @@ import { DraftFiltersProvider } from "./contexts/DraftFiltersContext";
 import { ExtraDraftAnalysisProvider } from "./contexts/ExtraDraftAnalysisContext";
 
 setupMobileVH();
-setupAnalytics();
 
 const queryClient = new QueryClient();
 

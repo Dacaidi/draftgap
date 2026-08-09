@@ -1,0 +1,190 @@
+name: Check upstream updates
+
+on:
+  schedule:
+    - cron: "37 8 * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: check-upstream-updates
+  cancel-in-progress: false
+
+jobs:
+  check-upstream:
+    name: Compare with upstream main
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Checkout default branch
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.repository.default_branch }}
+          fetch-depth: 0
+          persist-credentials: false
+
+      - name: Compare upstream history
+        id: compare
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          git fetch --no-tags \
+            https://github.com/vigovlugt/draftgap.git \
+            refs/heads/main:refs/remotes/upstream/main
+
+          local_sha="$(git rev-parse HEAD)"
+          upstream_sha="$(git rev-parse refs/remotes/upstream/main)"
+
+          if git merge-base --is-ancestor "$upstream_sha" "$local_sha"; then
+            echo "state=synced" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          commit_count="$(git rev-list --count "$local_sha..$upstream_sha")"
+          merge_base="$(git merge-base "$local_sha" "$upstream_sha" || true)"
+          if [[ -n "$merge_base" ]]; then
+            compare_url="https://github.com/vigovlugt/draftgap/compare/${merge_base}...${upstream_sha}"
+          else
+            compare_url="https://github.com/vigovlugt/draftgap/commits/main"
+          fi
+
+          git log \
+            --format='%H%x09%h%x09%s' \
+            --max-count=50 \
+            "$local_sha..$upstream_sha" |
+            while IFS=$'\t' read -r full_sha short_sha subject; do
+              subject="${subject:0:160}"
+              subject="${subject//@/＠}"
+              printf -- '- [`%s`](https://github.com/vigovlugt/draftgap/commit/%s) %s\n' \
+                "$short_sha" "$full_sha" "$subject"
+            done > "$RUNNER_TEMP/upstream-commits.md"
+
+          {
+            echo '<!-- draftgap-upstream-monitor -->'
+            echo 'The personal fork does not yet contain the latest upstream `main`.'
+            echo
+            echo "- Local main: \`${local_sha}\`"
+            echo "- Upstream main: \`${upstream_sha}\`"
+            echo "- Upstream-only commits: **${commit_count}**"
+            echo "- [Compare changes](${compare_url})"
+            echo
+            echo '### Upstream commits'
+            echo
+            cat "$RUNNER_TEMP/upstream-commits.md"
+            if (( commit_count > 50 )); then
+              echo
+              echo "_Showing the newest 50 of ${commit_count} commits._"
+            fi
+            echo
+            echo 'This issue is maintained automatically. It does not merge any code.'
+          } > "$RUNNER_TEMP/upstream-issue.md"
+
+          echo "state=behind" >> "$GITHUB_OUTPUT"
+
+      - name: Create, update, or close the reminder issue
+        uses: actions/github-script@v7
+        env:
+          SYNC_STATE: ${{ steps.compare.outputs.state }}
+          ISSUE_BODY_PATH: ${{ runner.temp }}/upstream-issue.md
+        with:
+          script: |
+            const fs = require("fs");
+            const owner = context.repo.owner;
+            const repo = context.repo.repo;
+            const title = "[Upstream] New DraftGap commits are available";
+            const marker = "<!-- draftgap-upstream-monitor -->";
+            const label = "upstream-update";
+
+            const allIssues = await github.paginate(
+                github.rest.issues.listForRepo,
+                {
+                    owner,
+                    repo,
+                    state: "all",
+                    per_page: 100,
+                },
+            );
+            const reminders = allIssues.filter(
+                (issue) =>
+                    !issue.pull_request &&
+                    issue.body?.includes(marker),
+            );
+            const openReminders = reminders.filter(
+                (issue) => issue.state === "open",
+            );
+
+            if (process.env.SYNC_STATE === "synced") {
+                for (const issue of openReminders) {
+                    await github.rest.issues.createComment({
+                        owner,
+                        repo,
+                        issue_number: issue.number,
+                        body: "Upstream `main` is now included in this fork. Closing the reminder automatically.",
+                    });
+                    await github.rest.issues.update({
+                        owner,
+                        repo,
+                        issue_number: issue.number,
+                        state: "closed",
+                    });
+                }
+                return;
+            }
+
+            if (process.env.SYNC_STATE !== "behind") {
+                core.setFailed(`Unexpected comparison state: ${process.env.SYNC_STATE}`);
+                return;
+            }
+
+            try {
+                await github.rest.issues.getLabel({ owner, repo, name: label });
+            } catch (error) {
+                if (error.status !== 404) throw error;
+                await github.rest.issues.createLabel({
+                    owner,
+                    repo,
+                    name: label,
+                    color: "FBCA04",
+                    description: "Updates available from the upstream repository",
+                });
+            }
+
+            const body = fs.readFileSync(process.env.ISSUE_BODY_PATH, "utf8");
+            const primary = openReminders[0] ?? reminders[0];
+
+            if (primary) {
+                await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: primary.number,
+                    title,
+                    body,
+                    state: "open",
+                    labels: [label],
+                    assignees: [owner],
+                });
+            } else {
+                await github.rest.issues.create({
+                    owner,
+                    repo,
+                    title,
+                    body,
+                    labels: [label],
+                    assignees: [owner],
+                });
+            }
+
+            for (const duplicate of openReminders.slice(1)) {
+                if (duplicate.number === primary?.number) continue;
+                await github.rest.issues.update({
+                    owner,
+                    repo,
+                    issue_number: duplicate.number,
+                    state: "closed",
+                });
+            }

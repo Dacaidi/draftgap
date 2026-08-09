@@ -6,7 +6,7 @@ import {
     useContext,
 } from "solid-js";
 import { createStore } from "solid-js/store";
-import { displayNameByRole, Role } from "@draftgap/core/src/models/Role";
+import { Role } from "@draftgap/core/src/models/Role";
 import { Team } from "@draftgap/core/src/models/Team";
 import { useDraftView } from "./DraftViewContext";
 import { useMedia } from "../hooks/useMedia";
@@ -90,12 +90,7 @@ export function createDraftContext() {
         index: number,
         championKey: string | undefined,
         role: Role | undefined,
-        {
-            updateSelection = true,
-            resetFilters = true,
-            reportEvent = true,
-            updateView = true,
-        } = {},
+        { updateSelection = true, resetFilters = true, updateView = true } = {},
     ) {
         batch(() => {
             if (
@@ -154,16 +149,6 @@ export function createDraftContext() {
 
             if (resetFilters) {
                 resetDraftFilters();
-            }
-
-            if (reportEvent && championKey !== undefined) {
-                gtag("event", "pick_champion", {
-                    event_category: "draft",
-                    champion_key: championKey,
-                    champion_name: dataset()!.championData[championKey].name,
-                    role,
-                    role_name: role ? displayNameByRole[role] : undefined,
-                });
             }
         });
     }
