@@ -30,7 +30,6 @@ import { DialogTrigger, Dialog } from "./components/common/Dialog";
 import SettingsDialog from "./components/dialogs/SettingsDialog";
 import { FAQDialog } from "./components/dialogs/FAQDialog";
 import { DesktopAppDialog } from "./components/dialogs/DesktopAppDialog";
-import { UpdateDialog } from "./components/dialogs/UpdateDialog";
 import { OptionsDropdownMenu } from "./components/OptionsMenu";
 import { useDraftAnalysis } from "./contexts/DraftAnalysisContext";
 import { ChampionDraftAnalysisDialog } from "./components/dialogs/ChampionDraftAnalysisDialog";
@@ -241,7 +240,6 @@ const App: Component = () => {
                 height: "calc(var(--vh, 1vh) * 100)",
             }}
         >
-            <UpdateDialog />
             <LocalDatasetUpdateDialog />
             <Dialog open={showFAQ()} onOpenChange={setShowFAQ}>
                 <FAQDialog />

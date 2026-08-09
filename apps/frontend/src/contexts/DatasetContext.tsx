@@ -27,7 +27,6 @@ import {
 } from "../../../dataset/src/index";
 import {
     createLocalDatasetCheckpointStore,
-    loadLocalDataset,
     loadLocalDatasetPair,
     saveDownloadedLocalDatasetPair,
     tauriDatasetFetch,
@@ -155,13 +154,8 @@ async function loadLocalDatasets(tier: DataTier) {
         console.warn("Could not load active local dataset pair", error);
         return undefined;
     }
-    const [currentPatchJson, thirtyDaysJson] = pair
-        ? [pair.currentPatch, pair.thirtyDays]
-        : await Promise.all([
-              loadLocalDataset(tier, "current-patch"),
-              loadLocalDataset(tier, "30-days"),
-          ]);
-    if (!currentPatchJson || !thirtyDaysJson) return undefined;
+    if (!pair) return undefined;
+    const { currentPatch: currentPatchJson, thirtyDays: thirtyDaysJson } = pair;
 
     try {
         const currentPatch: unknown = JSON.parse(currentPatchJson);
