@@ -292,27 +292,24 @@ export default function AnalysisView() {
             </div> */}
 
             <div>
-                <h3 class="text-3xl uppercase ml-4">Scaling</h3>
-                <span
-                    class="text-neutral-500 uppercase ml-4 mb-2"
+                <h3
+                    class="text-3xl uppercase ml-4 mb-2"
                     // @ts-ignore
                     use:tooltip={{
                         content: (
                             <>
-                                Relative scaling from 30-day champion-role
-                                results grouped by final game duration. 50%
-                                means the team performs as expected for those
-                                champions overall. Time intervals are
-                                automatically merged based on the selected
-                                rank's 30-day game sample so sparse duration
-                                ranges remain reliable. The opposing draft is
-                                not included.
+                                Relative winrate by final game duration. 50%
+                                means the selected champions perform as expected
+                                overall. Sparse adjacent time ranges may be
+                                combined. Each team is estimated independently;
+                                matchup effects between the drafts are not
+                                included.
                             </>
                         ),
                     }}
                 >
-                    Winrate by final game duration, adaptive 30-day intervals
-                </span>
+                    Scaling
+                </h3>
                 <div class="p-4 rounded-md bg-primary w-1/2 max-w-2xl h-64">
                     <ScalingChart />
                 </div>
