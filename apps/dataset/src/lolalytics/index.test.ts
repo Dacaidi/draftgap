@@ -40,16 +40,42 @@ describe("groupLolalyticsStatsByTime", () => {
         ]);
     });
 
-    test("rejects a missing or invalid source bucket", () => {
+    test("treats omitted zero-valued source bucket fields as zero", () => {
+        const time = Object.fromEntries(
+            Array.from({ length: 6 }, (_, index) => [index + 1, 100]),
+        );
+        const timeWin = Object.fromEntries(
+            Array.from({ length: 5 }, (_, index) => [index + 1, 50]),
+        );
+
+        expect(groupLolalyticsStatsByTime({ time, timeWin })).toEqual([
+            { games: 100, wins: 50 },
+            { games: 100, wins: 50 },
+            { games: 100, wins: 50 },
+            { games: 100, wins: 50 },
+            { games: 100, wins: 50 },
+            { games: 100, wins: 0 },
+            { games: 0, wins: 0 },
+        ]);
+    });
+
+    test("still rejects impossible source bucket values", () => {
         const time = Object.fromEntries(
             Array.from({ length: 7 }, (_, index) => [index + 1, 100]),
         );
         const timeWin = Object.fromEntries(
-            Array.from({ length: 6 }, (_, index) => [index + 1, 50]),
+            Array.from({ length: 7 }, (_, index) => [index + 1, 50]),
         );
+        timeWin[1] = 101;
 
         expect(() => groupLolalyticsStatsByTime({ time, timeWin })).toThrow(
-            "invalid game-duration stats for source bucket 7",
+            "source bucket 1 (100 games, 101 wins)",
+        );
+
+        time[1] = null as never;
+        timeWin[1] = 0;
+        expect(() => groupLolalyticsStatsByTime({ time, timeWin })).toThrow(
+            "source bucket 1 (null games, 0 wins)",
         );
     });
 });

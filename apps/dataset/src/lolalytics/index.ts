@@ -40,8 +40,11 @@ export function groupLolalyticsStatsByTime(
     timeData: QwikLolalyticsData["sidebar"]["time"],
 ) {
     return LOLALYTICS_TIME_BUCKETS.map((index) => {
-        const games = timeData.time[index];
-        const wins = timeData.timeWin[index];
+        // Lolalytics omits zero-valued keys in low-sample buckets.
+        const rawGames = timeData.time[index];
+        const rawWins = timeData.timeWin[index];
+        const games = rawGames === undefined ? 0 : rawGames;
+        const wins = rawWins === undefined ? 0 : rawWins;
 
         if (
             !Number.isFinite(games) ||
@@ -51,7 +54,7 @@ export function groupLolalyticsStatsByTime(
             wins > games
         ) {
             throw new Error(
-                `Lolalytics returned invalid game-duration stats for source bucket ${index}`,
+                `Lolalytics returned invalid game-duration stats for source bucket ${index} (${String(games)} games, ${String(wins)} wins)`,
             );
         }
 
