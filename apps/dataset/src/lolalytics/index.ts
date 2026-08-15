@@ -34,6 +34,22 @@ type LolalyticsRoleData = readonly [
     LolalyticsChampion2Response,
 ];
 
+const LOLALYTICS_TIME_BUCKETS = [[1, 2], [3], [4], [5], [6, 7]] as const;
+
+export function groupLolalyticsStatsByTime(
+    timeData: QwikLolalyticsData["sidebar"]["time"],
+) {
+    return LOLALYTICS_TIME_BUCKETS.map((indexes) =>
+        indexes.reduce(
+            (stats, index) => ({
+                games: stats.games + timeData.time[index],
+                wins: stats.wins + timeData.timeWin[index],
+            }),
+            { games: 0, wins: 0 },
+        ),
+    );
+}
+
 async function getBuildDataOrUndefined(
     version: string,
     championId: string,
@@ -227,32 +243,9 @@ export async function getChampionDataFromLolalytics(
                         ),
                     ) as Record<Role, Record<string, ChampionSynergyData>>,
                     damageProfile: championData.header.damage,
-                    statsByTime: Array.from({ length: 5 }).map((_, i) => {
-                        if (i === 0) {
-                            return {
-                                games:
-                                    championData.sidebar.time.time[1] +
-                                    championData.sidebar.time.time[2],
-                                wins:
-                                    championData.sidebar.time.timeWin[1] +
-                                    championData.sidebar.time.timeWin[2],
-                            };
-                        } else if (i === 4) {
-                            return {
-                                games:
-                                    championData.sidebar.time.time[5] +
-                                    championData.sidebar.time.time[6],
-                                wins:
-                                    championData.sidebar.time.timeWin[5] +
-                                    championData.sidebar.time.timeWin[6],
-                            };
-                        } else {
-                            return {
-                                games: championData.sidebar.time.time[i + 2],
-                                wins: championData.sidebar.time.timeWin[i + 2],
-                            };
-                        }
-                    }),
+                    statsByTime: groupLolalyticsStatsByTime(
+                        championData.sidebar.time,
+                    ),
                 };
 
                 return [getRoleFromString(role), championRoleData];
