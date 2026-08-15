@@ -299,14 +299,16 @@ export default function AnalysisView() {
                     use:tooltip={{
                         content: (
                             <>
-                                The overall team winrate has been normalized
-                                (removed) before calculating the team winrate
-                                over time.
+                                Relative scaling from 30-day champion-role
+                                results grouped by final game duration. 50%
+                                means the team performs as expected for those
+                                champions overall. The opposing draft is not
+                                included.
                             </>
                         ),
                     }}
                 >
-                    Team winrate normalized
+                    Winrate by final game duration, normalized
                 </span>
                 <div class="p-4 rounded-md bg-primary w-1/2 max-w-2xl h-64">
                     <ScalingChart />

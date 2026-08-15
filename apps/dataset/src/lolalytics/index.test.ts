@@ -3,6 +3,7 @@ import { DatasetHttpError } from "../fetch";
 import {
     getChampionDataFromLolalytics,
     getChampionRoleDataFromLolalytics,
+    groupLolalyticsStatsByTime,
     type LolalyticsFetchers,
 } from ".";
 import type { QwikLolalyticsData } from "./qwik";
@@ -15,6 +16,28 @@ function buildData(games: number) {
 }
 
 const teamData = {} as LolalyticsChampion2Response;
+
+describe("groupLolalyticsStatsByTime", () => {
+    test("groups all seven source buckets into the five chart ranges", () => {
+        const time = Object.fromEntries(
+            Array.from({ length: 7 }, (_, index) => [index + 1, index + 1]),
+        );
+        const timeWin = Object.fromEntries(
+            Array.from({ length: 7 }, (_, index) => [
+                index + 1,
+                (index + 1) * 10,
+            ]),
+        );
+
+        expect(groupLolalyticsStatsByTime({ time, timeWin })).toEqual([
+            { games: 3, wins: 30 },
+            { games: 3, wins: 30 },
+            { games: 4, wins: 40 },
+            { games: 5, wins: 50 },
+            { games: 13, wins: 130 },
+        ]);
+    });
+});
 
 describe("getChampionRoleDataFromLolalytics", () => {
     test("does not request team data after a zero-share role returns 404", async () => {
