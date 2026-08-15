@@ -310,7 +310,7 @@ export default function AnalysisView() {
                 >
                     Scaling
                 </h3>
-                <div class="p-4 rounded-md bg-primary w-1/2 max-w-2xl h-64">
+                <div class="p-4 rounded-md bg-primary w-full h-[26rem]">
                     <ScalingChart />
                 </div>
             </div>
