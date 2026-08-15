@@ -57,7 +57,8 @@ export function createScalingChartConfiguration(
         },
         options: {
             interaction: {
-                mode: "nearest",
+                mode: "index",
+                axis: "x",
                 intersect: false,
             },
             plugins: {
@@ -71,7 +72,7 @@ export function createScalingChartConfiguration(
                                 timeBuckets[context[0]?.dataIndex ?? -1];
                             if (!bucket) return "";
 
-                            return `SHARE OF ALL GAMES (SELECTED RANK, 30 DAYS) - ${(
+                            return `GAME SHARE - ${(
                                 bucket.gameShare * 100
                             ).toFixed(1)}%`;
                         },
@@ -92,13 +93,18 @@ export function createScalingChartConfiguration(
 
                                     return `${championName.toUpperCase()} - ${formatRating(
                                         championResult.rating,
-                                    )}`;
+                                    )}%`;
                                 });
 
+                            const team =
+                                context.datasetIndex === 0
+                                    ? "ALLY"
+                                    : "OPPONENT";
+
                             return [
+                                ...(context.datasetIndex === 0 ? [] : [""]),
+                                `${team} WINRATE - ${formatRating(result.totalRating)}%`,
                                 ...championLines,
-                                "",
-                                `TOTAL - ${formatRating(result.totalRating)}`,
                             ];
                         },
                     },

@@ -15,6 +15,17 @@ const result = {
     ],
 };
 
+const opponentResult = {
+    totalRating: 0,
+    championResults: [
+        {
+            championKey: "238",
+            role: 2 as const,
+            rating: 0,
+        },
+    ],
+};
+
 const timeBuckets = [
     {
         start: 0,
@@ -33,16 +44,17 @@ const timeBuckets = [
 ];
 
 describe("createScalingChartConfiguration", () => {
-    test("shows the nearest time point without requiring a point hit", () => {
+    test("shows both teams at the same time point without requiring a point hit", () => {
         const config = createScalingChartConfiguration(
             [result],
-            [result],
+            [opponentResult],
             timeBuckets,
             () => "Ahri",
         );
 
         expect(config.options?.interaction).toEqual({
-            mode: "nearest",
+            mode: "index",
+            axis: "x",
             intersect: false,
         });
         expect(config.data.labels).toEqual(["0-20", "20+"]);
@@ -54,7 +66,7 @@ describe("createScalingChartConfiguration", () => {
         expect(formatTimeBucketLabel(timeBuckets[1])).toBe("20+");
     });
 
-    test("shows the selected rank's 30-day game share", () => {
+    test("shows the game share once for a two-team time point", () => {
         const config = createScalingChartConfiguration(
             [result],
             [result],
@@ -67,17 +79,20 @@ describe("createScalingChartConfiguration", () => {
         expect(
             afterTitle?.call(
                 {} as never,
-                [{ datasetIndex: 0, dataIndex: 0 }] as never,
+                [
+                    { datasetIndex: 0, dataIndex: 0 },
+                    { datasetIndex: 1, dataIndex: 0 },
+                ] as never,
             ),
-        ).toBe("SHARE OF ALL GAMES (SELECTED RANK, 30 DAYS) - 28.7%");
+        ).toBe("GAME SHARE - 28.7%");
     });
 
-    test("keeps the champion breakdown in the tooltip", () => {
+    test("labels both team winrates and keeps their champion breakdowns", () => {
         const config = createScalingChartConfiguration(
             [result],
-            [result],
+            [opponentResult],
             timeBuckets,
-            () => "Ahri",
+            (championKey) => ({ "103": "Ahri", "238": "Zed" })[championKey],
         );
         const label = config.options?.plugins?.tooltip?.callbacks?.label;
 
@@ -86,6 +101,12 @@ describe("createScalingChartConfiguration", () => {
                 {} as never,
                 { datasetIndex: 0, dataIndex: 0 } as never,
             ),
-        ).toEqual(["AHRI - 50.00", "", "TOTAL - 50.00"]);
+        ).toEqual(["ALLY WINRATE - 50.00%", "AHRI - 50.00%"]);
+        expect(
+            label?.call(
+                {} as never,
+                { datasetIndex: 1, dataIndex: 0 } as never,
+            ),
+        ).toEqual(["", "OPPONENT WINRATE - 50.00%", "ZED - 50.00%"]);
     });
 });
