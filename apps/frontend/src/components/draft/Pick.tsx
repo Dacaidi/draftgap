@@ -14,6 +14,10 @@ import { useUser } from "../../contexts/UserContext";
 import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
 import { championName } from "../../utils/i18n";
 import { useMedia } from "../../hooks/useMedia";
+import {
+    championSplashSources,
+    applyImageFallback,
+} from "../../utils/champion-images";
 // eslint-disable-next-line
 tooltip;
 
@@ -67,6 +71,7 @@ export function Pick(props: Props) {
 
         return undefined;
     };
+    const splashSources = () => championSplashSources(champion()!);
 
     function setRole(role: Role | undefined) {
         pickChampion(props.team, props.index, pick().championKey, role);
@@ -140,20 +145,29 @@ export function Pick(props: Props) {
 
             <Show when={champion()}>
                 <>
-                    <div
-                        class="absolute top-0 bottom-0 left-0 h-full w-full"
+                    <img
+                        class="absolute inset-0 h-full w-full object-cover"
+                        src={splashSources().primary}
+                        onError={(event) =>
+                            applyImageFallback(
+                                event.currentTarget,
+                                splashSources().fallback,
+                            )
+                        }
+                        alt=""
+                        draggable={false}
                         style={{
-                            "background-image": `linear-gradient(to bottom, rgba(25, 25, 25, 0.8) 0%, rgba(0, 0, 0, 0) 50%, rgba(25, 25, 25, 0.8) 100%),
-                                url(https://ddragon.leagueoflegends.com/cdn/img/champion/centered/${
-                                    champion()!.id === "Fiddlesticks"
-                                        ? "FiddleSticks"
-                                        : champion()!.id
-                                }_0.jpg)`,
-                            "background-position": "center 20%",
-                            "background-size": "cover",
+                            "object-position": "center 20%",
                             filter: pick().hoverKey
                                 ? "grayscale(1)"
                                 : undefined,
+                        }}
+                    />
+                    <div
+                        class="absolute inset-0"
+                        style={{
+                            background:
+                                "linear-gradient(to bottom, rgba(25, 25, 25, 0.8) 0%, rgba(0, 0, 0, 0) 50%, rgba(25, 25, 25, 0.8) 100%)",
                         }}
                     />
 
