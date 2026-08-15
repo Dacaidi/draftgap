@@ -18,6 +18,7 @@ export function ScalingChart() {
 
     return (
         <Chart
+            ariaLabel="Ally and opponent scaling by final game duration"
             chart={createScalingChartConfiguration(
                 allyRatings(),
                 opponentRatings(),

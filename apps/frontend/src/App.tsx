@@ -56,7 +56,7 @@ const App: Component = () => {
         useDraftAnalysis();
     const { startLolClientIntegration, stopLolClientIntegration } =
         useLolClient();
-    const { isDesktop } = useMedia();
+    const { isDesktop, isMobileLayout } = useMedia();
 
     createEffect(() => {
         if (config.disableLeagueClientIntegration) {
@@ -132,21 +132,6 @@ const App: Component = () => {
                         </div>
                     </Match>
                     <Match when={isLoaded()}>
-                        <Dialog
-                            open={showAnalysisPick()}
-                            onOpenChange={(open) => {
-                                if (!open) setAnalysisPick(undefined);
-                            }}
-                        >
-                            <ChampionDraftAnalysisDialog
-                                championKey={analysisPick()!.championKey}
-                                team={analysisPick()!.team}
-                                openChampionDraftAnalysisModal={(
-                                    team,
-                                    championKey,
-                                ) => setAnalysisPick({ team, championKey })}
-                            />
-                        </Dialog>
                         <div class="flex flex-col min-h-full flex-1">
                             <ViewTabs
                                 tabs={
@@ -182,22 +167,27 @@ const App: Component = () => {
                                 <Match
                                     when={currentDraftView().type == "draft"}
                                 >
-                                    <div class="py-5 px-4 xl:px-8 h-full overflow-y-hidden flex flex-col">
+                                    <div
+                                        class="py-5 px-4 xl:px-8 h-full overflow-y-hidden flex flex-col"
+                                        data-draft-view
+                                    >
                                         <div class="mb-4 flex gap-4">
                                             <Search />
                                             <TeamSelector />
-                                            <RoleFilter class="hidden lg:inline-flex" />
-                                            <div class="hidden lg:inline-flex gap-3">
+                                            <RoleFilter class="hidden xl:inline-flex" />
+                                            <div class="hidden xl:inline-flex gap-3">
                                                 <FilterMenu />
                                                 <Show when={isDesktop}>
                                                     <AnalyzeHoverToggle />
                                                 </Show>
                                             </div>
                                         </div>
-                                        <div class="flex justify-end mb-4 gap-4 lg:hidden">
+                                        <div class="flex justify-end mb-4 gap-4 xl:hidden">
                                             <RoleFilter class="w-full" />
                                             <FilterMenu />
-                                            <AnalyzeHoverToggle />
+                                            <Show when={isDesktop}>
+                                                <AnalyzeHoverToggle />
+                                            </Show>
                                         </div>
                                         <BanRecommendations />
                                         <DraftTable />
@@ -241,6 +231,25 @@ const App: Component = () => {
             }}
         >
             <LocalDatasetUpdateDialog />
+            <Show when={isLoaded() ? analysisPick() : undefined}>
+                {(pick) => (
+                    <Dialog
+                        open={showAnalysisPick()}
+                        onOpenChange={(open) => {
+                            if (!open) setAnalysisPick(undefined);
+                        }}
+                    >
+                        <ChampionDraftAnalysisDialog
+                            championKey={pick().championKey}
+                            team={pick().team}
+                            openChampionDraftAnalysisModal={(
+                                team,
+                                championKey,
+                            ) => setAnalysisPick({ team, championKey })}
+                        />
+                    </Dialog>
+                )}
+            </Show>
             <Dialog open={showFAQ()} onOpenChange={setShowFAQ}>
                 <FAQDialog />
             </Dialog>
@@ -249,10 +258,12 @@ const App: Component = () => {
                     DRAFTGAP
                 </h1>
                 <div class="flex items-center gap-4">
-                    <div class="text-xs text-neutral-400 hidden md:flex flex-col text-right uppercase">
-                        <span>Patch {dataset()?.version ?? ""}</span>
-                        <span>Last updated {timeAgo()}</span>
-                    </div>
+                    <Show when={dataset()}>
+                        <div class="text-xs text-neutral-400 hidden md:flex flex-col text-right uppercase">
+                            <span>Patch {dataset()!.version}</span>
+                            <span>Last updated {timeAgo()}</span>
+                        </div>
+                    </Show>
                     <Dialog
                         open={showDownloadModal()}
                         onOpenChange={setShowDownloadModal}
@@ -269,14 +280,20 @@ const App: Component = () => {
                             onOpenChange={setShowSettings}
                         >
                             <DialogTrigger
+                                type="button"
+                                aria-label="Open settings"
                                 class={cn(
                                     buttonVariants({
                                         variant: "transparent",
                                     }),
-                                    "px-1 py-2",
+                                    "size-11 justify-center p-0",
                                 )}
                             >
-                                <Icon path={cog_6Tooth} class="w-7" />
+                                <Icon
+                                    path={cog_6Tooth}
+                                    class="w-7"
+                                    aria-hidden="true"
+                                />
                             </DialogTrigger>
                             <SettingsDialog />
                         </Dialog>
@@ -287,62 +304,64 @@ const App: Component = () => {
                     </div>
                 </div>
             </header>
-            {/* Desktop main */}
-            <main
-                class="h-full lg:grid overflow-hidden hidden"
-                style={{
-                    "grid-template-columns": "1fr 4fr 1fr",
-                    "grid-template-rows": "100%",
-                }}
-            >
-                <TeamSidebar team="ally" />
-
-                <MainView />
-
-                <TeamSidebar team="opponent" />
-            </main>
-
-            {/* Mobile main */}
-            <main class="h-full overflow-hidden lg:hidden">
-                <Switch>
-                    <Match when={mobileTab() === "ally"}>
+            <Switch>
+                <Match when={!isMobileLayout()}>
+                    <main
+                        class="h-full grid overflow-hidden"
+                        style={{
+                            "grid-template-columns": "1fr 4fr 1fr",
+                            "grid-template-rows": "100%",
+                        }}
+                    >
                         <TeamSidebar team="ally" />
-                    </Match>
-                    <Match when={mobileTab() === "opponent"}>
-                        <TeamSidebar team="opponent" />
-                    </Match>
-                    <Match when={true}>
-                        <MainView />
-                    </Match>
-                </Switch>
-            </main>
 
-            {/* Mobile footers */}
-            <Show when={mobileTab() !== undefined}>
-                <footer class="bg-primary px-4 py-2 border-t-2 border-neutral-700 flex justify-evenly lg:hidden gap-4">
-                    <For each={["ally", "draft", "opponent"] as const}>
-                        {(view) => (
-                            <Badge
-                                as="button"
-                                onClick={() =>
-                                    setCurrentDraftView({
-                                        type: "draft",
-                                        subType: view,
-                                    })
-                                }
-                                theme={
-                                    mobileTab() === view
-                                        ? "primary"
-                                        : "secondary"
-                                }
-                                class="w-1/3"
-                            >
-                                {view}
-                            </Badge>
-                        )}
-                    </For>
-                </footer>
-            </Show>
+                        <MainView />
+
+                        <TeamSidebar team="opponent" />
+                    </main>
+                </Match>
+                <Match when={true}>
+                    <main class="h-full overflow-hidden">
+                        <Switch>
+                            <Match when={mobileTab() === "ally"}>
+                                <TeamSidebar team="ally" />
+                            </Match>
+                            <Match when={mobileTab() === "opponent"}>
+                                <TeamSidebar team="opponent" />
+                            </Match>
+                            <Match when={true}>
+                                <MainView />
+                            </Match>
+                        </Switch>
+                    </main>
+
+                    <Show when={mobileTab() !== undefined}>
+                        <footer class="bg-primary px-4 py-2 border-t-2 border-neutral-700 flex justify-evenly gap-4">
+                            <For each={["ally", "draft", "opponent"] as const}>
+                                {(view) => (
+                                    <Badge
+                                        as="button"
+                                        onClick={() =>
+                                            setCurrentDraftView({
+                                                type: "draft",
+                                                subType: view,
+                                            })
+                                        }
+                                        theme={
+                                            mobileTab() === view
+                                                ? "primary"
+                                                : "secondary"
+                                        }
+                                        class="w-1/3"
+                                    >
+                                        {view}
+                                    </Badge>
+                                )}
+                            </For>
+                        </footer>
+                    </Show>
+                </Match>
+            </Switch>
         </div>
     );
 };

@@ -79,7 +79,7 @@ export default function SettingsDialog() {
     ] as const;
 
     return (
-        <DialogContent>
+        <DialogContent class="max-w-2xl">
             <DialogHeader>
                 <DialogTitle>Settings</DialogTitle>
             </DialogHeader>
@@ -90,6 +90,7 @@ export default function SettingsDialog() {
                         Ignore individual champion winrates
                     </span>
                     <Switch
+                        aria-label="Ignore individual champion winrates"
                         checked={config.ignoreChampionWinrates}
                         onChange={() =>
                             setConfig({
@@ -102,16 +103,22 @@ export default function SettingsDialog() {
                 <div class="flex items-center mt-1 mb-1 gap-1">
                     <span class="text-lg uppercase block">Risk level</span>
                     <Dialog>
-                        <DialogTrigger>
+                        <DialogTrigger
+                            type="button"
+                            aria-label="Learn about risk levels"
+                            class="-my-2 flex size-11 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
+                        >
                             <Icon
                                 path={questionMarkCircle}
                                 class="w-5 inline text-neutral-400 -mt-1"
+                                aria-hidden="true"
                             />
                         </DialogTrigger>
                         <FAQDialog />
                     </Dialog>
                 </div>
                 <ButtonGroup
+                    aria-label="Risk level"
                     options={riskLevelOptions}
                     selected={config.riskLevel}
                     size="sm"
@@ -121,14 +128,19 @@ export default function SettingsDialog() {
                         })
                     }
                 />
-                <Show when={isDesktop}>
-                    <div class="flex flex-col gap-1 mt-3">
-                        <span class="text-lg uppercase">Data rank</span>
+            </div>
+
+            <Show when={isDesktop}>
+                <div class="border-t border-white/10 pt-4">
+                    <h3 class="text-3xl uppercase">Data</h3>
+                    <div class="mt-2 flex flex-col gap-2">
+                        <span class="text-lg uppercase">Rank</span>
                         <ButtonGroup
+                            aria-label="Data rank"
                             options={dataTierOptions}
                             selected={config.dataTier}
                             size="sm"
-                            class="flex-wrap"
+                            layout="grid"
                             disabled={
                                 datasetState() === "pending" ||
                                 datasetState() === "refreshing"
@@ -136,9 +148,9 @@ export default function SettingsDialog() {
                             onChange={(dataTier) => setConfig({ dataTier })}
                         />
                         <span class="text-sm text-neutral-400">
-                            Every rank is downloaded from the daily GitHub
-                            dataset and cached on this device. Local generation
-                            is only used when no download or cache is available.
+                            Rank data updates daily and is cached locally. If a
+                            download fails, DraftGap uses the cache or generates
+                            the data locally.
                         </span>
                         <Button
                             variant="secondary"
@@ -147,13 +159,13 @@ export default function SettingsDialog() {
                                 datasetState() === "refreshing"
                             }
                             onClick={() => refreshLocalDatasets()}
-                            class="self-start mt-1"
+                            class="self-start"
                         >
                             Check for data update
                         </Button>
                     </div>
-                </Show>
-            </div>
+                </div>
+            </Show>
             <div>
                 <h3 class="text-3xl uppercase">UI</h3>
                 <div class="flex space-x-8 items-center justify-between mt-2">
@@ -161,6 +173,7 @@ export default function SettingsDialog() {
                         Place favourites at top of suggestions
                     </span>
                     <Switch
+                        aria-label="Place favourites at top of suggestions"
                         checked={config.showFavouritesAtTop}
                         onChange={() =>
                             setConfig({
@@ -177,6 +190,7 @@ export default function SettingsDialog() {
                             Place banned champion suggestions at
                         </span>
                         <ButtonGroup
+                            aria-label="Banned champion suggestion placement"
                             options={draftTablePlacementOptions}
                             selected={config.banPlacement}
                             size="sm"
@@ -192,6 +206,7 @@ export default function SettingsDialog() {
                             Place unowned champion suggestions at
                         </span>
                         <ButtonGroup
+                            aria-label="Unowned champion suggestion placement"
                             options={[
                                 {
                                     value: DraftTablePlacement.Bottom,
@@ -222,6 +237,7 @@ export default function SettingsDialog() {
                         Show advanced winrates
                     </span>
                     <Switch
+                        aria-label="Show advanced winrates"
                         checked={config.showAdvancedWinrates}
                         onChange={() =>
                             setConfig({
@@ -241,6 +257,7 @@ export default function SettingsDialog() {
                             Disable league client integration
                         </span>
                         <Switch
+                            aria-label="Disable League Client integration"
                             checked={config.disableLeagueClientIntegration}
                             onChange={() =>
                                 setConfig({
@@ -258,6 +275,7 @@ export default function SettingsDialog() {
                 <div class="flex flex-col gap-1 mt-2">
                     <span class="text-lg uppercase">Favourite builds site</span>
                     <ButtonGroup
+                        aria-label="Favourite builds site"
                         options={statsSiteOptions}
                         selected={config.defaultStatsSite}
                         size="sm"

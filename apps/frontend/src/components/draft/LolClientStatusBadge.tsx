@@ -25,9 +25,10 @@ export const LolClientStatusBadge: Component<Props> = (props) => {
             <Match when={!isDesktop}>
                 <Badge
                     as="button"
+                    type="button"
                     onClick={() => props.setShowDownloadModal(true)}
                     theme="primary"
-                    class="hidden md:block hover:opacity-70 transition"
+                    class="hidden! md:inline-flex! hover:opacity-70 transition focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900"
                 >
                     Sync with league client
                 </Badge>
@@ -43,7 +44,10 @@ export const LolClientStatusBadge: Component<Props> = (props) => {
             </Match>
             <Match when={clientState() === ClientState.NotFound}>
                 <Dialog>
-                    <DialogTrigger>
+                    <DialogTrigger
+                        type="button"
+                        class="rounded-full focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900"
+                    >
                         <Badge
                             theme="secondary"
                             class="transition hover:bg-neutral-700"
@@ -52,6 +56,7 @@ export const LolClientStatusBadge: Component<Props> = (props) => {
                             <Icon
                                 path={questionMarkCircle}
                                 class="w-5 inline text-neutral-400 ml-1 -mr-2"
+                                aria-hidden="true"
                             />
                         </Badge>
                     </DialogTrigger>

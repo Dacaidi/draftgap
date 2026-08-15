@@ -27,14 +27,33 @@ export default function AnalysisView() {
 
     return (
         <div>
-            <DraftSummaryCards team="ally" />
-            <DraftSummaryCards team="opponent" class="mb-12 mt-6" />
+            <section aria-labelledby="ally-summary-title">
+                <h2
+                    id="ally-summary-title"
+                    class="mb-2 ml-4 text-xl font-semibold uppercase text-ally"
+                >
+                    Ally
+                </h2>
+                <DraftSummaryCards team="ally" />
+            </section>
+            <section
+                aria-labelledby="opponent-summary-title"
+                class="mb-12 mt-6"
+            >
+                <h2
+                    id="opponent-summary-title"
+                    class="mb-2 ml-4 text-xl font-semibold uppercase text-opponent"
+                >
+                    Opponent
+                </h2>
+                <DraftSummaryCards team="opponent" />
+            </section>
 
             <div
-                class="flex-col md:flex-row flex gap-4 mb-8 overflow-hidden"
+                class="flex flex-col gap-8 mb-8 overflow-hidden min-[2100px]:flex-row"
                 id="total-result"
             >
-                <div class="md:w-1/2">
+                <div class="min-w-0 min-[2100px]:w-1/2">
                     <h3
                         class="text-3xl mb-1 uppercase ml-4"
                         // @ts-ignore
@@ -68,7 +87,7 @@ export default function AnalysisView() {
                         }
                     />
                 </div>
-                <div class="md:w-1/2">
+                <div class="min-w-0 min-[2100px]:w-1/2">
                     <h3
                         class="text-3xl mb-1 uppercase ml-4"
                         // @ts-ignore
@@ -176,7 +195,7 @@ export default function AnalysisView() {
                         Matchups
                     </h3>
                     <p
-                        class="text-neutral-500 uppercase ml-4"
+                        class="text-neutral-400 uppercase ml-4"
                         // @ts-ignore
                         use:tooltip={{
                             content: (
@@ -210,8 +229,11 @@ export default function AnalysisView() {
                 }
             />
 
-            <div class="flex-col md:flex-row flex gap-4 mb-8" id="duo-result">
-                <div class="md:w-1/2">
+            <div
+                class="flex flex-col gap-8 mb-8 min-[2100px]:flex-row"
+                id="duo-result"
+            >
+                <div class="min-w-0 min-[2100px]:w-1/2">
                     <h3
                         class="text-3xl uppercase ml-4"
                         // @ts-ignore
@@ -224,7 +246,7 @@ export default function AnalysisView() {
                         Ally duos
                     </h3>
                     <p
-                        class="text-neutral-500 uppercase ml-4 mb-2"
+                        class="text-neutral-400 uppercase ml-4 mb-2"
                         // @ts-ignore
                         use:tooltip={{
                             content: (
@@ -245,7 +267,7 @@ export default function AnalysisView() {
                         }
                     />
                 </div>
-                <div class="md:w-1/2">
+                <div class="min-w-0 min-[2100px]:w-1/2">
                     <h3
                         class="text-3xl uppercase ml-4"
                         // @ts-ignore
@@ -258,7 +280,7 @@ export default function AnalysisView() {
                         Opponent duos
                     </h3>
                     <p
-                        class="text-neutral-500 uppercase ml-4 mb-2"
+                        class="text-neutral-400 uppercase ml-4 mb-2"
                         // @ts-ignore
                         use:tooltip={{
                             content: (
@@ -292,24 +314,45 @@ export default function AnalysisView() {
             </div> */}
 
             <div>
-                <h3
-                    class="text-3xl uppercase ml-4 mb-2"
-                    // @ts-ignore
-                    use:tooltip={{
-                        content: (
-                            <>
-                                Relative winrate by final game duration. 50%
-                                means the selected champions perform as expected
-                                overall. Sparse adjacent time ranges may be
-                                combined. Each team is estimated independently;
-                                matchup effects between the drafts are not
-                                included.
-                            </>
-                        ),
-                    }}
-                >
-                    Scaling
-                </h3>
+                <div class="mb-2 flex items-center justify-between gap-4">
+                    <h3
+                        class="text-3xl uppercase ml-4"
+                        // @ts-ignore
+                        use:tooltip={{
+                            content: (
+                                <>
+                                    Relative winrate by final game duration. 50%
+                                    means the selected champions perform as
+                                    expected overall. Sparse adjacent time
+                                    ranges may be combined. Each team is
+                                    estimated independently; matchup effects
+                                    between the drafts are not included.
+                                </>
+                            ),
+                        }}
+                    >
+                        Scaling
+                    </h3>
+                    <div
+                        class="flex items-center gap-4 text-sm font-semibold uppercase"
+                        aria-label="Scaling chart legend"
+                    >
+                        <span class="flex items-center gap-2">
+                            <span
+                                class="h-1 w-6 rounded-full bg-ally"
+                                aria-hidden="true"
+                            />
+                            Ally
+                        </span>
+                        <span class="flex items-center gap-2">
+                            <span
+                                class="h-1 w-6 rounded-full bg-opponent"
+                                aria-hidden="true"
+                            />
+                            Opponent
+                        </span>
+                    </div>
+                </div>
                 <div class="p-4 rounded-md bg-primary w-full h-[26rem]">
                     <ScalingChart />
                 </div>

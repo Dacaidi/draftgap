@@ -112,6 +112,11 @@ export function createScalingChartConfiguration(
             },
             scales: {
                 y: {
+                    ticks: {
+                        callback(value) {
+                            return `${value}%`;
+                        },
+                    },
                     grid: {
                         color(info) {
                             if (info.tick.value === 50) return "#9b9b9b";

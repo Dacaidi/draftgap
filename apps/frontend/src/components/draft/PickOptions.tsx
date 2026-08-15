@@ -3,7 +3,7 @@ import { ellipsisVertical } from "solid-heroicons/outline";
 import { presentationChartLine, trash, user } from "solid-heroicons/solid-mini";
 import { useDraft } from "../../contexts/DraftContext";
 import { Team } from "@draftgap/core/src/models/Team";
-import { ROLES, Role } from "@draftgap/core/src/models/Role";
+import { displayNameByRole, ROLES, Role } from "@draftgap/core/src/models/Role";
 import { linkByStatsSite } from "../../utils/sites";
 import { useUser } from "../../contexts/UserContext";
 import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
@@ -53,15 +53,22 @@ export function PickOptions(props: { team: Team; index: number }) {
     return (
         <div class="absolute right-0 top-0">
             <DropdownMenu>
-                <DropdownMenuTrigger>
-                    <button
-                        class={cn(
-                            buttonVariants({ variant: "transparent" }),
-                            "px-1 py-2",
-                        )}
-                    >
-                        <Icon path={ellipsisVertical} class="h-7" />
-                    </button>
+                <DropdownMenuTrigger
+                    aria-label={`Open options for ${
+                        champion()
+                            ? championName(champion()!, config)
+                            : `pick ${props.index + 1}`
+                    }`}
+                    class={cn(
+                        buttonVariants({ variant: "transparent" }),
+                        "size-11 justify-center p-0",
+                    )}
+                >
+                    <Icon
+                        path={ellipsisVertical}
+                        class="h-7"
+                        aria-hidden="true"
+                    />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                     <DropdownMenuLabel>
@@ -129,11 +136,17 @@ export function PickOptions(props: { team: Team; index: number }) {
                             <For each={ROLES}>
                                 {(role) => (
                                     <button
+                                        type="button"
+                                        aria-label={`Set ${displayNameByRole[role]} role`}
+                                        aria-pressed={
+                                            teamPicks()[props.index].role ===
+                                            role
+                                        }
                                         class={cn(
                                             buttonVariants({
                                                 variant: "transparent",
                                             }),
-                                            "px-1.5 relative",
+                                            "size-11 justify-center p-0 relative",
                                         )}
                                         onClick={() =>
                                             pickChampion(
@@ -147,6 +160,7 @@ export function PickOptions(props: { team: Team; index: number }) {
                                     >
                                         <RoleIcon
                                             role={role}
+                                            aria-hidden="true"
                                             class={cn(
                                                 "h-6 w-6 text-neutral-500",
                                                 {

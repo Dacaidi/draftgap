@@ -30,13 +30,13 @@ export function BanRecommendations() {
                         <h2 class="text-lg font-semibold uppercase text-red-400">
                             Recommended bans
                         </h2>
-                        <span class="text-sm uppercase text-neutral-500">
+                        <span class="text-sm uppercase text-neutral-400">
                             Based on {allyTeamCompWithHovers().size} allied
                             intent
                             {allyTeamCompWithHovers().size === 1 ? "" : "s"}
                         </span>
                     </div>
-                    <span class="text-xs uppercase text-neutral-500">
+                    <span class="text-xs uppercase text-neutral-400">
                         Highest estimated enemy winrate versus your team
                     </span>
                 </div>
@@ -77,7 +77,7 @@ export function BanRecommendations() {
                                                 config,
                                             )} is picked into your current team`}
                                         >
-                                            <span class="w-4 shrink-0 text-center text-sm font-semibold text-neutral-500">
+                                            <span class="w-4 shrink-0 text-center text-sm font-semibold text-neutral-400">
                                                 {index() + 1}
                                             </span>
                                             <ChampionIcon
@@ -94,7 +94,7 @@ export function BanRecommendations() {
                                                         config,
                                                     )}
                                                 </div>
-                                                <div class="flex items-center gap-1 text-xs uppercase text-neutral-500">
+                                                <div class="flex items-center gap-1 text-xs uppercase text-neutral-400">
                                                     <RoleIcon
                                                         role={suggestion.role}
                                                         class="h-4 w-4"
@@ -116,7 +116,7 @@ export function BanRecommendations() {
                                                     )}
                                                     %
                                                 </div>
-                                                <div class="text-[0.65rem] uppercase text-neutral-600">
+                                                <div class="text-[0.65rem] uppercase text-neutral-400">
                                                     Enemy WR
                                                 </div>
                                             </div>
