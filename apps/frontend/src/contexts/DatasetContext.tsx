@@ -20,6 +20,7 @@ import { useUser } from "./UserContext";
 import {
     fetchDatasetWithRetry,
     setDatasetFetch,
+    type DatasetFetch,
 } from "../../../dataset/src/fetch";
 import {
     generateDatasets,
@@ -88,16 +89,14 @@ async function fetchHostedText(
     url: string,
     options: { maxAttempts: number; timeoutMs: number },
 ) {
-    const response = await fetchDatasetWithRetry(
-        (input, init) =>
-            tauriDatasetFetchWithTimeout(input, init, options.timeoutMs),
-        url,
-        undefined,
-        {
-            maxAttempts: options.maxAttempts,
-            timeoutMs: options.timeoutMs + 5_000,
-        },
-    );
+    const fetcher: DatasetFetch = isTauri()
+        ? (input, init) =>
+              tauriDatasetFetchWithTimeout(input, init, options.timeoutMs)
+        : fetch;
+    const response = await fetchDatasetWithRetry(fetcher, url, undefined, {
+        maxAttempts: options.maxAttempts,
+        timeoutMs: options.timeoutMs + 5_000,
+    });
     return await response.text();
 }
 
@@ -199,7 +198,8 @@ function createDatasetContext() {
             setHostedDatasetStatus(undefined);
 
             if (!desktop) {
-                return await fetchDefaultDatasets();
+                const manifest = await fetchHostedManifest(tier, false);
+                return (await fetchHostedDatasets(tier, manifest)).pair;
             }
 
             const localDatasets = await loadLocalDatasets(tier);

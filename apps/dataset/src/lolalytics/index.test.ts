@@ -18,24 +18,39 @@ function buildData(games: number) {
 const teamData = {} as LolalyticsChampion2Response;
 
 describe("groupLolalyticsStatsByTime", () => {
-    test("groups all seven source buckets into the five chart ranges", () => {
+    test("preserves all seven source buckets for adaptive grouping", () => {
         const time = Object.fromEntries(
-            Array.from({ length: 7 }, (_, index) => [index + 1, index + 1]),
-        );
-        const timeWin = Object.fromEntries(
             Array.from({ length: 7 }, (_, index) => [
                 index + 1,
                 (index + 1) * 10,
             ]),
         );
+        const timeWin = Object.fromEntries(
+            Array.from({ length: 7 }, (_, index) => [index + 1, index + 1]),
+        );
 
         expect(groupLolalyticsStatsByTime({ time, timeWin })).toEqual([
-            { games: 3, wins: 30 },
-            { games: 3, wins: 30 },
-            { games: 4, wins: 40 },
-            { games: 5, wins: 50 },
-            { games: 13, wins: 130 },
+            { games: 10, wins: 1 },
+            { games: 20, wins: 2 },
+            { games: 30, wins: 3 },
+            { games: 40, wins: 4 },
+            { games: 50, wins: 5 },
+            { games: 60, wins: 6 },
+            { games: 70, wins: 7 },
         ]);
+    });
+
+    test("rejects a missing or invalid source bucket", () => {
+        const time = Object.fromEntries(
+            Array.from({ length: 7 }, (_, index) => [index + 1, 100]),
+        );
+        const timeWin = Object.fromEntries(
+            Array.from({ length: 6 }, (_, index) => [index + 1, 50]),
+        );
+
+        expect(() => groupLolalyticsStatsByTime({ time, timeWin })).toThrow(
+            "invalid game-duration stats for source bucket 7",
+        );
     });
 });
 

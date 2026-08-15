@@ -6,6 +6,10 @@ import {
 import { Role, ROLES } from "@draftgap/core/src/models/Role";
 import type { RiotChampion } from "./riot";
 import type { ChampionData } from "@draftgap/core/src/models/dataset/ChampionData";
+import {
+    ratingToWinrate,
+    winrateToRating,
+} from "@draftgap/core/src/rating/ratings";
 import { getChampionDataBatch, getDataset } from "./index";
 
 function createChampion(id: string, key: string): RiotChampion {
@@ -70,6 +74,105 @@ describe("getChampionDataBatch", () => {
 });
 
 describe("getDataset", () => {
+    test("checkpoints raw time buckets before adapting and removing rank bias", async () => {
+        const champion = createChampion("Ahri", "103");
+        const championData = createChampionData(champion);
+        const rawStatsByTime = [
+            { games: 5, wins: 1 },
+            { games: 5, wins: 4 },
+            { games: 40, wins: 8 },
+            { games: 5, wins: 2 },
+            { games: 5, wins: 3 },
+            { games: 20, wins: 10 },
+            { games: 20, wins: 11 },
+        ];
+        championData.statsByRole[Role.Middle].games = 100;
+        championData.statsByRole[Role.Middle].wins = 60;
+        championData.statsByRole[Role.Middle].statsByTime = rawStatsByTime;
+
+        let checkpointedChampion: ChampionData | undefined;
+        const dataset = await getDataset(
+            "16.15.1",
+            [champion],
+            [],
+            {},
+            {},
+            "gold_plus",
+            {
+                fetchChampionData: async () => championData,
+                onChampionComplete: async (completedChampion) => {
+                    checkpointedChampion = structuredClone(completedChampion);
+                },
+            },
+        );
+
+        expect(
+            checkpointedChampion?.statsByRole[Role.Middle].statsByTime,
+        ).toEqual(rawStatsByTime);
+        expect(dataset.timeBuckets).toEqual([
+            {
+                start: 0,
+                end: 20,
+                gameShare: 0.1,
+                sourceBucketStart: 0,
+                sourceBucketEnd: 1,
+            },
+            {
+                start: 20,
+                end: 25,
+                gameShare: 0.4,
+                sourceBucketStart: 2,
+                sourceBucketEnd: 2,
+            },
+            {
+                start: 25,
+                end: 35,
+                gameShare: 0.1,
+                sourceBucketStart: 3,
+                sourceBucketEnd: 4,
+            },
+            {
+                start: 35,
+                end: 40,
+                gameShare: 0.2,
+                sourceBucketStart: 5,
+                sourceBucketEnd: 5,
+            },
+            {
+                start: 40,
+                end: null,
+                gameShare: 0.2,
+                sourceBucketStart: 6,
+                sourceBucketEnd: 6,
+            },
+        ]);
+
+        const expectedGroupedStats = [
+            { games: 10, wins: 5 },
+            { games: 40, wins: 8 },
+            { games: 10, wins: 5 },
+            { games: 20, wins: 10 },
+            { games: 20, wins: 11 },
+        ];
+        const rankRating = winrateToRating(0.6);
+        const adaptedStats =
+            dataset.championData[champion.key]!.statsByRole[Role.Middle]
+                .statsByTime;
+
+        expect(adaptedStats.map((stats) => stats.games)).toEqual(
+            expectedGroupedStats.map((stats) => stats.games),
+        );
+        for (const [index, stats] of adaptedStats.entries()) {
+            const expected = expectedGroupedStats[index]!;
+            const expectedWins =
+                ratingToWinrate(
+                    winrateToRating(expected.wins / expected.games) -
+                        rankRating,
+                ) * expected.games;
+            expect(stats.wins).toBeCloseTo(expectedWins);
+        }
+    });
+
     test("resumes checkpoints and reports progress after each champion", async () => {
         const champions = [
             createChampion("Ahri", "103"),

@@ -4,12 +4,14 @@ import { RuneData, RunePathData, StatShardData } from "./RuneData";
 import { ItemData } from "./ItemData";
 import { ratingToWinrate, winrateToRating } from "../../rating/ratings";
 import { SummonerSpellData } from "./SummonerSpellData";
+import type { DatasetTimeBucket } from "./time-buckets";
 
-export const DATASET_VERSION = "5";
+export const DATASET_VERSION = "6";
 
 export interface Dataset {
     version: string;
     date: string;
+    timeBuckets: DatasetTimeBucket[];
     championData: Record<string, ChampionData>;
 
     itemData: Record<number, ItemData>;

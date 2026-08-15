@@ -26,6 +26,7 @@ function createDataset(champions: ChampionData[]): Dataset {
     return {
         version: "test",
         date: "2026-01-01",
+        timeBuckets: [],
         championData: Object.fromEntries(
             champions.map((champion) => [champion.key, champion]),
         ),
