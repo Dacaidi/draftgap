@@ -3,13 +3,19 @@ import { ratingToWinrate } from "@draftgap/core/src/rating/ratings";
 import type { ChartConfiguration } from "chart.js";
 import { formatRating } from "../../../utils/rating";
 
-export const SCALING_CHART_LABELS = ["0-20", "20-25", "25-30", "30-35", "35+"];
-
 type RatingsByTime = DraftExtraAnalysis["ratingByTime"];
+type TimeBuckets = DraftExtraAnalysis["timeBuckets"];
+
+export function formatTimeBucketLabel(bucket: TimeBuckets[number]) {
+    return bucket.end === null
+        ? `${bucket.start}+`
+        : `${bucket.start}-${bucket.end}`;
+}
 
 export function createScalingChartConfiguration(
     allyRatings: RatingsByTime,
     opponentRatings: RatingsByTime,
+    timeBuckets: TimeBuckets,
     getChampionName: (championKey: string) => string | undefined,
 ): ChartConfiguration<"line", number[], string> {
     const ratingsByDataset = [allyRatings, opponentRatings];
@@ -23,7 +29,7 @@ export function createScalingChartConfiguration(
     return {
         type: "line",
         data: {
-            labels: SCALING_CHART_LABELS,
+            labels: timeBuckets.map(formatTimeBucketLabel),
             datasets: [
                 {
                     label: "ALLY",
@@ -60,6 +66,15 @@ export function createScalingChartConfiguration(
                 },
                 tooltip: {
                     callbacks: {
+                        afterTitle(context) {
+                            const bucket =
+                                timeBuckets[context[0]?.dataIndex ?? -1];
+                            if (!bucket) return "";
+
+                            return `SHARE OF ALL GAMES (SELECTED RANK, 30 DAYS) - ${(
+                                bucket.gameShare * 100
+                            ).toFixed(1)}%`;
+                        },
                         label(context) {
                             const result =
                                 ratingsByDataset[context.datasetIndex]?.[

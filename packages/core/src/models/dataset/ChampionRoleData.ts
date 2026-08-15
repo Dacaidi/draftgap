@@ -3,16 +3,18 @@ import { ChampionMatchupData } from "./ChampionMatchupData";
 import { ChampionSynergyData } from "./ChampionSynergyData";
 import { Role } from "../Role";
 
+export type ChampionTimeStats = {
+    wins: number;
+    games: number;
+};
+
 export interface ChampionRoleData {
     games: number;
     wins: number;
     matchup: Record<Role, Record<string, ChampionMatchupData>>;
     synergy: Record<Role, Record<string, ChampionSynergyData>>;
     damageProfile: ChampionDamageProfile;
-    statsByTime: {
-        wins: number;
-        games: number;
-    }[];
+    statsByTime: ChampionTimeStats[];
 }
 
 export function defaultChampionRoleData(): ChampionRoleData {

@@ -11,12 +11,17 @@ export function ScalingChart() {
     const allyRatings = () => allyDraftExtraAnalysis()?.ratingByTime ?? [];
     const opponentRatings = () =>
         opponentDraftExtraAnalysis()?.ratingByTime ?? [];
+    const timeBuckets = () =>
+        allyDraftExtraAnalysis()?.timeBuckets ??
+        opponentDraftExtraAnalysis()?.timeBuckets ??
+        [];
 
     return (
         <Chart
             chart={createScalingChartConfiguration(
                 allyRatings(),
                 opponentRatings(),
+                timeBuckets(),
                 (championKey) => dataset()?.championData[championKey]?.name,
             )}
         />

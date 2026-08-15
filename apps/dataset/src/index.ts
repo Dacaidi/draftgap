@@ -4,6 +4,7 @@ import {
     type Dataset,
     removeRankBias,
 } from "@draftgap/core/src/models/dataset/Dataset";
+import { adaptDatasetTimeBuckets } from "@draftgap/core/src/models/dataset/time-buckets";
 import type { ItemData } from "@draftgap/core/src/models/dataset/ItemData";
 import type {
     RuneData,
@@ -319,6 +320,7 @@ export async function getDataset(
     const dataset: Dataset = {
         version: version,
         date: options.date ?? new Date().toISOString(),
+        timeBuckets: [],
         championData: {},
         ...riotRunesToRuneData(runes),
         itemData: riotItemsToItemData(items),
@@ -395,6 +397,7 @@ export async function getDataset(
         );
     }
 
+    adaptDatasetTimeBuckets(dataset);
     removeRankBias(dataset);
 
     return dataset;

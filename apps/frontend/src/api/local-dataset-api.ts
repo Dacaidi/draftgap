@@ -1,6 +1,7 @@
 import { invoke } from "@tauri-apps/api/core";
 import { DATASET_VERSION } from "@draftgap/core/src/models/dataset/Dataset";
 import type { DataTier } from "@draftgap/core/src/models/dataset/DataTier";
+import { SOURCE_TIME_BUCKETS } from "@draftgap/core/src/models/dataset/time-buckets";
 import type { DatasetFetch } from "../../../dataset/src/fetch";
 import type { ChampionData } from "@draftgap/core/src/models/dataset/ChampionData";
 import type {
@@ -186,11 +187,15 @@ function isChampionData(
             isRecord(roleData.synergy) &&
             isRecord(roleData.damageProfile) &&
             Array.isArray(roleData.statsByTime) &&
+            roleData.statsByTime.length === SOURCE_TIME_BUCKETS.length &&
             roleData.statsByTime.every(
                 (stats) =>
                     isRecord(stats) &&
                     Number.isFinite(stats.games) &&
-                    Number.isFinite(stats.wins),
+                    Number.isFinite(stats.wins) &&
+                    stats.games >= 0 &&
+                    stats.wins >= 0 &&
+                    stats.wins <= stats.games,
             )
         );
     });

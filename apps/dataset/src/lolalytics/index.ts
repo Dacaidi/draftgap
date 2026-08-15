@@ -34,20 +34,29 @@ type LolalyticsRoleData = readonly [
     LolalyticsChampion2Response,
 ];
 
-const LOLALYTICS_TIME_BUCKETS = [[1, 2], [3], [4], [5], [6, 7]] as const;
+const LOLALYTICS_TIME_BUCKETS = [1, 2, 3, 4, 5, 6, 7] as const;
 
 export function groupLolalyticsStatsByTime(
     timeData: QwikLolalyticsData["sidebar"]["time"],
 ) {
-    return LOLALYTICS_TIME_BUCKETS.map((indexes) =>
-        indexes.reduce(
-            (stats, index) => ({
-                games: stats.games + timeData.time[index],
-                wins: stats.wins + timeData.timeWin[index],
-            }),
-            { games: 0, wins: 0 },
-        ),
-    );
+    return LOLALYTICS_TIME_BUCKETS.map((index) => {
+        const games = timeData.time[index];
+        const wins = timeData.timeWin[index];
+
+        if (
+            !Number.isFinite(games) ||
+            !Number.isFinite(wins) ||
+            games < 0 ||
+            wins < 0 ||
+            wins > games
+        ) {
+            throw new Error(
+                `Lolalytics returned invalid game-duration stats for source bucket ${index}`,
+            );
+        }
+
+        return { games, wins };
+    });
 }
 
 async function getBuildDataOrUndefined(

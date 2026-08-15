@@ -3,6 +3,7 @@ import {
     type Dataset,
 } from "@draftgap/core/src/models/dataset/Dataset";
 import type { DataTier } from "@draftgap/core/src/models/dataset/DataTier";
+import { SOURCE_TIME_BUCKETS } from "@draftgap/core/src/models/dataset/time-buckets";
 import {
     HOSTED_DATASET_FORMAT_VERSION,
     type HostedDatasetFileMetadata,
@@ -18,6 +19,107 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 
 function isValidDate(value: unknown): value is string {
     return typeof value === "string" && Number.isFinite(Date.parse(value));
+}
+
+function isValidTimeBuckets(value: unknown) {
+    if (
+        !Array.isArray(value) ||
+        value.length === 0 ||
+        value.length > SOURCE_TIME_BUCKETS.length
+    ) {
+        return false;
+    }
+
+    let previousEnd: number | null = 0;
+    let previousSourceEnd = -1;
+    let totalShare = 0;
+
+    for (const candidate of value) {
+        if (!isRecord(candidate)) return false;
+
+        const { start, end, gameShare, sourceBucketStart, sourceBucketEnd } =
+            candidate;
+        if (
+            typeof start !== "number" ||
+            !Number.isFinite(start) ||
+            start !== previousEnd ||
+            (end !== null &&
+                (typeof end !== "number" ||
+                    !Number.isFinite(end) ||
+                    end <= start)) ||
+            typeof gameShare !== "number" ||
+            !Number.isFinite(gameShare) ||
+            gameShare < 0 ||
+            gameShare > 1 ||
+            typeof sourceBucketStart !== "number" ||
+            !Number.isInteger(sourceBucketStart) ||
+            typeof sourceBucketEnd !== "number" ||
+            !Number.isInteger(sourceBucketEnd) ||
+            sourceBucketStart !== previousSourceEnd + 1 ||
+            sourceBucketEnd < sourceBucketStart ||
+            sourceBucketEnd >= SOURCE_TIME_BUCKETS.length
+        ) {
+            return false;
+        }
+
+        if (
+            start !== SOURCE_TIME_BUCKETS[sourceBucketStart]!.start ||
+            end !== SOURCE_TIME_BUCKETS[sourceBucketEnd]!.end
+        ) {
+            return false;
+        }
+
+        previousEnd = end as number | null;
+        previousSourceEnd = sourceBucketEnd;
+        totalShare += gameShare;
+    }
+
+    return (
+        previousEnd === null &&
+        previousSourceEnd === SOURCE_TIME_BUCKETS.length - 1 &&
+        (Math.abs(totalShare - 1) < 1e-6 || totalShare === 0)
+    );
+}
+
+function hasValidChampionTimeStats(
+    championData: Record<string, unknown>,
+    timeBucketCount: number,
+) {
+    if (Object.keys(championData).length === 0) return false;
+
+    for (const champion of Object.values(championData)) {
+        if (!isRecord(champion) || !isRecord(champion.statsByRole)) {
+            return false;
+        }
+
+        for (const role of [0, 1, 2, 3, 4]) {
+            const roleData = champion.statsByRole[role];
+            if (
+                !isRecord(roleData) ||
+                !Array.isArray(roleData.statsByTime) ||
+                roleData.statsByTime.length !== timeBucketCount
+            ) {
+                return false;
+            }
+
+            for (const stats of roleData.statsByTime) {
+                if (
+                    !isRecord(stats) ||
+                    typeof stats.games !== "number" ||
+                    !Number.isFinite(stats.games) ||
+                    typeof stats.wins !== "number" ||
+                    !Number.isFinite(stats.wins) ||
+                    stats.games < 0 ||
+                    stats.wins < 0 ||
+                    stats.wins > stats.games
+                ) {
+                    return false;
+                }
+            }
+        }
+    }
+
+    return true;
 }
 
 function parseFileMetadata(
@@ -87,10 +189,20 @@ export function parseHostedDatasetManifest(
 export function isDatasetShape(value: unknown): value is Dataset {
     if (!isRecord(value)) return false;
 
+    const validTimeBuckets = isValidTimeBuckets(value.timeBuckets);
+    const validChampionData =
+        isRecord(value.championData) &&
+        validTimeBuckets &&
+        hasValidChampionTimeStats(
+            value.championData,
+            (value.timeBuckets as unknown[]).length,
+        );
+
     return (
         typeof value.version === "string" &&
         isValidDate(value.date) &&
-        isRecord(value.championData) &&
+        validTimeBuckets &&
+        validChampionData &&
         isRecord(value.itemData) &&
         isRecord(value.runeData) &&
         isRecord(value.runePathData) &&
