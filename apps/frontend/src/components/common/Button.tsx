@@ -3,7 +3,7 @@ import { JSX, splitProps } from "solid-js";
 import { cn } from "../../utils/style";
 
 export const buttonVariants = cva(
-    "uppercase inline-flex items-center font-medium rounded-md transition ease-in-out duration-150",
+    "uppercase inline-flex items-center font-medium rounded-md transition ease-in-out duration-150 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900",
     {
         variants: {
             variant: {
@@ -30,7 +30,11 @@ export function Button(props: Props) {
     const [local, other] = splitProps(props, ["children", "variant", "size"]);
 
     return (
-        <button {...other} class={cn(buttonVariants(local), props.class)}>
+        <button
+            {...other}
+            type={other.type ?? "button"}
+            class={cn(buttonVariants(local), props.class)}
+        >
             {local.children}
         </button>
     );

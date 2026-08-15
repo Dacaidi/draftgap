@@ -14,12 +14,16 @@ export function WinnerCell(props: Props) {
             <Icon
                 path={props.winner ? arrowLeft : arrowRight}
                 class="absolute w-6"
+                aria-hidden="true"
                 classList={{
                     "text-ally": props.winner,
                     "text-opponent": !props.winner,
                     "bottom-0": props.winrate !== undefined,
                 }}
             />
+            <span class="sr-only">
+                {props.winner ? "Ally" : "Opponent"} wins
+            </span>
             <Show when={props.winrate}>
                 <span class="-bottom-7 absolute text-base text-neutral-500">
                     {formatPercentage(props.winrate!)}

@@ -19,9 +19,18 @@ export function FilterMenu() {
     return (
         <Popover>
             <PopoverTrigger
-                class={cn(buttonVariants({ variant: "transparent" }), "px-1")}
+                type="button"
+                aria-label="Open draft filters"
+                class={cn(
+                    buttonVariants({ variant: "transparent" }),
+                    "size-11 justify-center p-0",
+                )}
             >
-                <Icon path={funnel} class="w-6 text-neutral-300" />
+                <Icon
+                    path={funnel}
+                    class="w-6 text-neutral-300"
+                    aria-hidden="true"
+                />
             </PopoverTrigger>
             <PopoverContent>
                 <span class="text-2xl uppercase block mb-1 leading-none">

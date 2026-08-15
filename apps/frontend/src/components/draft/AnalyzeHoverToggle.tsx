@@ -12,6 +12,13 @@ export function AnalyzeHoverToggle() {
 
     return (
         <button
+            type="button"
+            aria-label={
+                analyzeHovers()
+                    ? "Stop analyzing hovered champions"
+                    : "Analyze hovered champions"
+            }
+            aria-pressed={analyzeHovers()}
             // @ts-ignore
             use:tooltip={{
                 content: "Analyze hovered champions in the draft",
@@ -19,11 +26,15 @@ export function AnalyzeHoverToggle() {
             onClick={() => setAnalyzeHovers((v) => !v)}
             class={cn(
                 buttonVariants({ variant: "transparent" }),
-                "px-1 text-neutral-50",
+                "size-11 justify-center p-0 text-neutral-50",
                 !analyzeHovers() && "text-neutral-700",
             )}
         >
-            <Icon path={analyzeHovers() ? eye : eyeSlash} class="w-6 h-6" />
+            <Icon
+                path={analyzeHovers() ? eye : eyeSlash}
+                class="w-6 h-6"
+                aria-hidden="true"
+            />
         </button>
     );
 }

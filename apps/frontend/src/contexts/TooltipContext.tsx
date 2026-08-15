@@ -69,6 +69,7 @@ export function TooltipProvider(props: { children: JSX.Element }) {
                         <div
                             ref={setPopper}
                             id="tooltip"
+                            role="tooltip"
                             class="max-w-xs w-max"
                         >
                             <div class="rounded-md bg-neutral-800 shadow-lg px-4 py-2 font-body text-sm ring-1 ring-white/20">

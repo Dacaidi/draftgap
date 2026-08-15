@@ -29,29 +29,37 @@ export function Search() {
         const el = inputEl as HTMLInputElement;
 
         const onControlF = (e: KeyboardEvent) => {
+            if (
+                document.querySelector(
+                    '[role="dialog"][data-expanded], [role="menu"][data-expanded]',
+                )
+            ) {
+                return;
+            }
             if (e.ctrlKey && (e.key === "f" || e.key == "k")) {
                 e.preventDefault();
                 el.focus();
             }
         };
         window.addEventListener("keydown", onControlF);
-
-        const onTabOrEnter = (e: KeyboardEvent) => {
-            if (e.key === "Tab" || e.key === "Enter") {
-                e.preventDefault();
-                const firstTableRow = document.querySelector("table tbody tr");
-                if (firstTableRow) {
-                    (firstTableRow as HTMLElement).focus();
-                }
-            }
-        };
-
-        el.addEventListener("keydown", onTabOrEnter);
         onCleanup(() => {
-            el.removeEventListener("keydown", onTabOrEnter);
             window.removeEventListener("keydown", onControlF);
         });
     });
+
+    function focusFirstResult(e: KeyboardEvent) {
+        if (e.key !== "Enter" && e.key !== "ArrowDown") return;
+
+        const firstTableRow = inputEl
+            ?.closest("[data-draft-view]")
+            ?.querySelector<HTMLElement>(
+                "[data-draft-table] tbody tr[tabindex='0']",
+            );
+        if (!firstTableRow) return;
+
+        e.preventDefault();
+        firstTableRow.focus();
+    }
 
     return (
         <div class="flex rounded-md flex-1">
@@ -65,16 +73,20 @@ export function Search() {
                 </div>
                 <input
                     ref={inputEl}
-                    id="draftTableSearch"
-                    class="text-lg py-1 block w-full rounded-md rounded-l-md border-gray-301 pl-10 bg-neutral-800 placeholder:text-neutral-500 text-neutral-100"
+                    data-draft-search
+                    aria-label="Search champions"
+                    class="h-11 text-lg py-1 block w-full rounded-md rounded-l-md border-gray-301 pl-10 pr-11 bg-neutral-800 placeholder:text-neutral-400 text-neutral-100"
                     placeholder="SEARCH"
                     value={search()}
                     onInput={onInput}
+                    onKeyDown={focusFirstResult}
                 />
                 <Show when={search().length}>
                     <button
-                        class="absolute inset-y-0 right-0 flex items-center pr-3"
+                        type="button"
+                        class="absolute inset-y-0 right-0 flex w-11 items-center justify-center rounded-r-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
                         onClick={() => setSearch("")}
+                        aria-label="Clear champion search"
                     >
                         <Icon
                             path={xMark}

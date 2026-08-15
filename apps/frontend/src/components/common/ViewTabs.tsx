@@ -15,6 +15,7 @@ type Props<T> = {
 export const ViewTabs = <T,>(props: Props<T>) => {
     return (
         <div
+            role="tablist"
             class={cn(
                 "bg-primary w-full border-b border-neutral-700",
                 props.class,
@@ -23,10 +24,17 @@ export const ViewTabs = <T,>(props: Props<T>) => {
             <For each={props.tabs}>
                 {(tab) => (
                     <button
+                        type="button"
+                        role="tab"
+                        aria-selected={
+                            props.equals
+                                ? props.equals(tab.value, props.selected)
+                                : tab.value === props.selected
+                        }
                         class={cn(
-                            "px-4 py-3 text-neutral-500 uppercase font-semibold hover:text-neutral-400",
+                            "relative -mb-px border-b-2 border-transparent px-4 py-3 text-neutral-400 uppercase font-semibold transition-colors hover:text-neutral-200 focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ally",
                             {
-                                "text-neutral-50 hover:text-neutral-50":
+                                "border-ally text-neutral-50 hover:text-neutral-50":
                                     props.equals
                                         ? props.equals(
                                               tab.value,

@@ -25,15 +25,18 @@ export function TeamOptions(props: Props) {
     return (
         <div class="absolute right-1 top-0">
             <DropdownMenu>
-                <DropdownMenuTrigger>
-                    <button
-                        class={cn(
-                            buttonVariants({ variant: "transparent" }),
-                            "px-1 py-2",
-                        )}
-                    >
-                        <Icon path={ellipsisVertical} class="h-7" />
-                    </button>
+                <DropdownMenuTrigger
+                    aria-label={`Open ${props.team} team options`}
+                    class={cn(
+                        buttonVariants({ variant: "transparent" }),
+                        "size-11 justify-center p-0",
+                    )}
+                >
+                    <Icon
+                        path={ellipsisVertical}
+                        class="h-7"
+                        aria-hidden="true"
+                    />
                 </DropdownMenuTrigger>
                 <DropdownMenuContent>
                     <DropdownMenuLabel>{props.team} team</DropdownMenuLabel>

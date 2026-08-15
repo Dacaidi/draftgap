@@ -57,7 +57,7 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                         <th
                                             scope="col"
                                             class={cn(
-                                                "py-3 px-2 text-left font-normal uppercase w-full whitespace-nowrap transition-colors",
+                                                "py-3 px-2 text-left font-normal uppercase w-full whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ally",
                                                 {
                                                     "pl-4": i() === 0,
                                                     "pr-4":
@@ -73,7 +73,36 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                                         .meta as any
                                                 )?.headerClass,
                                             )}
+                                            aria-sort={
+                                                !header.column.getCanSort()
+                                                    ? undefined
+                                                    : header.column.getIsSorted() ===
+                                                        "asc"
+                                                      ? "ascending"
+                                                      : header.column.getIsSorted() ===
+                                                          "desc"
+                                                        ? "descending"
+                                                        : "none"
+                                            }
+                                            tabindex={
+                                                header.column.getCanSort()
+                                                    ? 0
+                                                    : undefined
+                                            }
                                             onClick={header.column.getToggleSortingHandler()}
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    !header.column.getCanSort() ||
+                                                    (event.key !== "Enter" &&
+                                                        event.key !== " ")
+                                                )
+                                                    return;
+
+                                                event.preventDefault();
+                                                header.column.getToggleSortingHandler()?.(
+                                                    event,
+                                                );
+                                            }}
                                         >
                                             <div class="flex items-center gap-1">
                                                 {header.isPlaceholder
@@ -92,8 +121,8 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                                     <span class="text-base mr-">
                                                         {
                                                             {
-                                                                asc: " ▲",
-                                                                desc: " ▼",
+                                                                asc: "\u25B2",
+                                                                desc: "\u25BC",
                                                             }[
                                                                 header.column.getIsSorted() as string
                                                             ]
@@ -122,7 +151,7 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                     >
                         {(row) => (
                             <tr
-                                class="transition duration-200 ease-out group/row"
+                                class="transition duration-200 ease-out group/row focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ally"
                                 classList={{
                                     "hover:bg-neutral-800": Boolean(
                                         props.onClickRow,
@@ -131,9 +160,10 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                 }}
                                 onClick={() => props.onClickRow?.(row)}
                                 tabindex={props.onClickRow ? 0 : undefined}
-                                onSubmit={() => props.onClickRow?.(row)}
                                 onKeyDown={(e) => {
-                                    if (e.key === "Enter") {
+                                    if (e.target !== e.currentTarget) return;
+                                    if (e.key === "Enter" || e.key === " ") {
+                                        e.preventDefault();
                                         props.onClickRow?.(row);
                                     }
                                 }}
