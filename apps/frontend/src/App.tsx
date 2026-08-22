@@ -79,12 +79,7 @@ const App: Component = () => {
 
     const MainView = () => {
         return (
-            <div
-                class="bg-[#101010] flex-1 overflow-auto overflow-x-hidden h-full flex flex-col"
-                style={{
-                    "scroll-behavior": "smooth",
-                }}
-            >
+            <div class="bg-[#101010] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
                 <Switch>
                     <Match when={datasetState() === "errored"}>
                         <div class="flex flex-col justify-center items-center h-full text-2xl text-red-500 px-8 text-center">
@@ -132,7 +127,7 @@ const App: Component = () => {
                         </div>
                     </Match>
                     <Match when={isLoaded()}>
-                        <div class="flex flex-col min-h-full flex-1">
+                        <div class="flex min-h-0 flex-1 flex-col">
                             <ViewTabs
                                 tabs={
                                     [
@@ -161,14 +156,14 @@ const App: Component = () => {
                                         subType: "draft",
                                     })
                                 }
-                                class="xl:px-8"
+                                class="shrink-0 xl:px-8"
                             />
                             <Switch>
                                 <Match
                                     when={currentDraftView().type == "draft"}
                                 >
                                     <div
-                                        class="py-5 px-4 xl:px-8 h-full overflow-y-hidden flex flex-col"
+                                        class="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-5 xl:px-8"
                                         data-draft-view
                                     >
                                         <div class="mb-4 flex gap-4">
@@ -198,7 +193,7 @@ const App: Component = () => {
                                         currentDraftView().type === "analysis"
                                     }
                                 >
-                                    <div class="py-5 px-4 xl:px-8 h-full overflow-y-auto">
+                                    <div class="min-h-0 flex-1 overflow-y-auto px-4 py-5 xl:px-8">
                                         <AnalysisView />
                                     </div>
                                 </Match>
@@ -225,7 +220,7 @@ const App: Component = () => {
 
     return (
         <div
-            class="h-screen flex flex-col"
+            class="flex h-screen min-h-0 flex-col overflow-hidden"
             style={{
                 height: "calc(var(--vh, 1vh) * 100)",
             }}
@@ -253,7 +248,7 @@ const App: Component = () => {
             <Dialog open={showFAQ()} onOpenChange={setShowFAQ}>
                 <FAQDialog />
             </Dialog>
-            <header class="bg-primary px-1 py-0 border-b-2 border-neutral-700 flex justify-between">
+            <header class="bg-primary flex shrink-0 justify-between border-b-2 border-neutral-700 px-1 py-0">
                 <h1 class="text-4xl sm:text-5xl mr-2 ml-1 mt-1 mb-[0.4rem] font-semibold tracking-wide">
                     DRAFTGAP
                 </h1>
@@ -307,10 +302,11 @@ const App: Component = () => {
             <Switch>
                 <Match when={!isMobileLayout()}>
                     <main
-                        class="h-full grid overflow-hidden"
+                        class="grid min-h-0 min-w-0 flex-1 overflow-hidden"
                         style={{
-                            "grid-template-columns": "1fr 4fr 1fr",
-                            "grid-template-rows": "100%",
+                            "grid-template-columns":
+                                "minmax(0, 1fr) minmax(0, 4fr) minmax(0, 1fr)",
+                            "grid-template-rows": "minmax(0, 1fr)",
                         }}
                     >
                         <TeamSidebar team="ally" />
@@ -321,7 +317,7 @@ const App: Component = () => {
                     </main>
                 </Match>
                 <Match when={true}>
-                    <main class="h-full overflow-hidden">
+                    <main class="flex min-h-0 flex-1 flex-col overflow-hidden">
                         <Switch>
                             <Match when={mobileTab() === "ally"}>
                                 <TeamSidebar team="ally" />
@@ -336,7 +332,7 @@ const App: Component = () => {
                     </main>
 
                     <Show when={mobileTab() !== undefined}>
-                        <footer class="bg-primary px-4 py-2 border-t-2 border-neutral-700 flex justify-evenly gap-4">
+                        <footer class="bg-primary flex shrink-0 justify-evenly gap-4 border-t-2 border-neutral-700 px-4 py-2">
                             <For each={["ally", "draft", "opponent"] as const}>
                                 {(view) => (
                                     <Badge

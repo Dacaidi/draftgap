@@ -568,6 +568,7 @@ export default function DraftTable() {
                 <Table
                     table={table}
                     onClickRow={pick}
+                    class="min-h-0 flex-1"
                     rowClassName={(r) =>
                         bans.find((b) => b === r.original.championKey) ||
                         !ownsChampion(r.original.championKey)
