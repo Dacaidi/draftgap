@@ -15,7 +15,7 @@ type DraftView =
 function createDraftViewContext() {
     const [currentDraftView, setCurrentDraftView] = createSignal<DraftView>({
         type: "draft",
-        subType: "ally",
+        subType: "draft",
     });
 
     return {

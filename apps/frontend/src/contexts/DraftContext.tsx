@@ -115,7 +115,11 @@ export function createDraftContext() {
                 hoverKey: undefined,
             });
 
-            if (updateView && currentDraftView().type === "draft") {
+            if (
+                updateView &&
+                !isMobileLayout() &&
+                currentDraftView().type === "draft"
+            ) {
                 setCurrentDraftView({
                     type: "draft",
                     subType: team,
@@ -237,7 +241,7 @@ export function createDraftContext() {
 
         setCurrentDraftView({
             type: "draft",
-            subType: (draftFinished() ? "draft" : team) ?? "draft",
+            subType: "draft",
         });
     };
 
