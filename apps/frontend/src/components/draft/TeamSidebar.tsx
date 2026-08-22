@@ -27,7 +27,7 @@ export function TeamSidebar(props: IProps) {
             : opponentDraftResult()?.totalRating;
 
     return (
-        <div class="bg-primary flex flex-col h-full relative">
+        <div class="bg-primary relative flex h-full min-h-0 flex-col overflow-hidden">
             <DamageDistributionBar team={props.team} />
             <div class="flex-1 flex justify-center items-center bg-[#141414]">
                 <span

@@ -48,11 +48,11 @@ export const BuildsView = () => {
 
     return (
         <>
-            <div class="flex justify-between bg-primary xl:px-8 border-b border-neutral-700">
+            <div class="bg-primary flex shrink-0 justify-between border-b border-neutral-700 xl:px-8">
                 <BuildsViewTabs team="ally" />
                 <BuildsViewTabs team="opponent" />
             </div>
-            <div class="py-5 px-4 xl:px-8 h-full overflow-y-auto">
+            <div class="min-h-0 flex-1 overflow-y-auto px-4 py-5 xl:px-8">
                 <Show
                     when={buildPick()}
                     fallback={
