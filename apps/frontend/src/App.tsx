@@ -69,6 +69,18 @@ const App: Component = () => {
     const [showSettings, setShowSettings] = createSignal(false);
     const [showFAQ, setShowFAQ] = createSignal(false);
     const [showDownloadModal, setShowDownloadModal] = createSignal(false);
+    let wasMobileLayout = isMobileLayout();
+
+    createEffect(() => {
+        const mobileLayout = isMobileLayout();
+        if (mobileLayout && !wasMobileLayout) {
+            const view = currentDraftView();
+            if (view.type === "draft") {
+                setCurrentDraftView({ type: "draft", subType: "draft" });
+            }
+        }
+        wasMobileLayout = mobileLayout;
+    });
 
     const timeAgo = () =>
         dataset()
@@ -333,24 +345,43 @@ const App: Component = () => {
 
                     <Show when={mobileTab() !== undefined}>
                         <footer class="bg-primary flex shrink-0 justify-evenly gap-4 border-t-2 border-neutral-700 px-4 py-2">
-                            <For each={["ally", "draft", "opponent"] as const}>
+                            <For
+                                each={
+                                    [
+                                        { value: "ally", label: "Ally" },
+                                        {
+                                            value: "draft",
+                                            label: "Champions",
+                                        },
+                                        {
+                                            value: "opponent",
+                                            label: "Opponent",
+                                        },
+                                    ] as const
+                                }
+                            >
                                 {(view) => (
                                     <Badge
                                         as="button"
+                                        type="button"
+                                        aria-label={`Show ${view.label}`}
+                                        aria-pressed={
+                                            mobileTab() === view.value
+                                        }
                                         onClick={() =>
                                             setCurrentDraftView({
                                                 type: "draft",
-                                                subType: view,
+                                                subType: view.value,
                                             })
                                         }
                                         theme={
-                                            mobileTab() === view
+                                            mobileTab() === view.value
                                                 ? "primary"
                                                 : "secondary"
                                         }
                                         class="w-1/3"
                                     >
-                                        {view}
+                                        {view.label}
                                     </Badge>
                                 )}
                             </For>
