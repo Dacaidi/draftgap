@@ -19,6 +19,7 @@ export function FilterMenu() {
     return (
         <Popover>
             <PopoverTrigger
+                data-draft-square-control="filters"
                 type="button"
                 aria-label="Open draft filters"
                 class={cn(

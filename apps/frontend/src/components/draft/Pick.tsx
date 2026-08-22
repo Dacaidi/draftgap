@@ -138,7 +138,10 @@ export function Pick(props: Props) {
             onMouseOut={onMouseOut}
         >
             <Show when={!champion()}>
-                <span class="absolute top-2 left-2 uppercase text-2xl leading-none">
+                <span
+                    data-pick-label
+                    class="absolute top-2 left-2 uppercase text-2xl leading-none"
+                >
                     PICK {props.index + 1}
                 </span>
             </Show>
@@ -171,11 +174,15 @@ export function Pick(props: Props) {
                         }}
                     />
 
-                    <span class="absolute top-2 left-2 uppercase text-2xl leading-none">
+                    <span
+                        data-pick-label
+                        class="absolute top-2 left-2 uppercase text-2xl leading-none"
+                    >
                         {championName(champion()!, config)}
                     </span>
 
                     <div
+                        data-pick-role-options
                         class="absolute bottom-0 left-0 right-0 flex justify-end overflow-x-auto pt-1 overflow-y-hidden"
                         classList={{
                             "bottom-1": pick().role !== undefined,

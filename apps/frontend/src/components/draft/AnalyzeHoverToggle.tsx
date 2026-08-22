@@ -12,6 +12,7 @@ export function AnalyzeHoverToggle() {
 
     return (
         <button
+            data-draft-square-control="analyze-hovers"
             type="button"
             aria-label={
                 analyzeHovers()

@@ -241,6 +241,7 @@ export default function DraftTable() {
             header: () => (
                 <button
                     type="button"
+                    data-draft-table-control
                     aria-label="Show favourite champions only"
                     aria-pressed={favouriteFilter()}
                     class="inline-flex size-11 items-center justify-center rounded-md group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
@@ -394,6 +395,7 @@ export default function DraftTable() {
             cell: (info) => (
                 <button
                     type="button"
+                    data-draft-table-control
                     aria-label={`Open analysis for ${championName(
                         dataset()!.championData[info.row.original.championKey],
                         config,
@@ -546,7 +548,10 @@ export default function DraftTable() {
         <>
             <div ref={draftTableRoot} class="contents">
                 <Show when={matchupAssumptions().length > 0}>
-                    <div class="mb-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs uppercase text-neutral-500">
+                    <div
+                        data-matchup-assumptions
+                        class="mb-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs uppercase text-neutral-500"
+                    >
                         <span>Matchup assumptions</span>
                         <For each={matchupAssumptions()}>
                             {([role, championKey]) => (
@@ -560,7 +565,10 @@ export default function DraftTable() {
                                 </span>
                             )}
                         </For>
-                        <span class="normal-case text-neutral-600">
+                        <span
+                            data-matchup-assumptions-help
+                            class="normal-case text-neutral-600"
+                        >
                             Click an opponent role to override
                         </span>
                     </div>

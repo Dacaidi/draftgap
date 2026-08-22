@@ -17,11 +17,13 @@ export function RoleFilter(props: ComponentProps<"span">) {
     return (
         <span
             {...props}
+            data-role-filter
             class={cn("isolate inline-flex rounded-md shadow-xs", props.class)}
         >
             <For each={ROLES}>
                 {(role, i) => (
                     <button
+                        data-role-filter-option={role}
                         type="button"
                         aria-label={`Filter by ${displayNameByRole[role]} role`}
                         aria-pressed={roleFilter() === role}

@@ -49,7 +49,7 @@
             {
                 "fullscreen": false,
                 "height": 850,
-                "minHeight": 600,
+                "minHeight": 400,
                 "minWidth": 480,
                 "resizable": true,
                 "title": "DraftGap",

@@ -15,6 +15,7 @@ type Props<T> = {
 export const ViewTabs = <T,>(props: Props<T>) => {
     return (
         <div
+            data-view-tabs
             role="tablist"
             class={cn(
                 "bg-primary w-full border-b border-neutral-700",
@@ -24,6 +25,7 @@ export const ViewTabs = <T,>(props: Props<T>) => {
             <For each={props.tabs}>
                 {(tab) => (
                     <button
+                        data-view-tab
                         type="button"
                         role="tab"
                         aria-selected={

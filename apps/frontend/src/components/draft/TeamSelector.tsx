@@ -15,10 +15,14 @@ export function TeamSelector() {
     }
 
     return (
-        <span class="isolate inline-flex rounded-md shadow-xs">
+        <span
+            data-team-selector
+            class="isolate inline-flex rounded-md shadow-xs"
+        >
             <For each={TEAMS}>
                 {(team, i) => (
                     <button
+                        data-team-selector-option={team}
                         type="button"
                         class="text-lg relative inline-flex items-center border text-neutral-300 border-neutral-700 bg-primary px-3 py-1 font-medium hover:bg-neutral-800 uppercase disabled:pointer-events-none disabled:text-neutral-700"
                         classList={{

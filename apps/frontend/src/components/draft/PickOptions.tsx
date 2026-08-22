@@ -54,6 +54,7 @@ export function PickOptions(props: { team: Team; index: number }) {
         <div class="absolute right-0 top-0">
             <DropdownMenu>
                 <DropdownMenuTrigger
+                    data-pick-options-trigger
                     aria-label={`Open options for ${
                         champion()
                             ? championName(champion()!, config)

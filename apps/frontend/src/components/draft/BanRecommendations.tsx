@@ -24,19 +24,32 @@ export function BanRecommendations() {
 
     return (
         <Show when={isBanPhase()}>
-            <section class="mb-4 shrink-0 rounded-md border border-red-950 bg-primary p-3">
-                <div class="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+            <section
+                data-ban-recommendations
+                aria-label="Recommended bans"
+                class="mb-4 shrink-0 rounded-md border border-red-950 bg-primary p-3"
+            >
+                <div
+                    data-ban-recommendations-header
+                    class="mb-3 flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1"
+                >
                     <div class="flex items-baseline gap-3">
                         <h2 class="text-lg font-semibold uppercase text-red-400">
                             Recommended bans
                         </h2>
-                        <span class="text-sm uppercase text-neutral-400">
+                        <span
+                            data-ban-recommendations-detail
+                            class="text-sm uppercase text-neutral-400"
+                        >
                             Based on {allyTeamCompWithHovers().size} allied
                             intent
                             {allyTeamCompWithHovers().size === 1 ? "" : "s"}
                         </span>
                     </div>
-                    <span class="text-xs uppercase text-neutral-400">
+                    <span
+                        data-ban-recommendations-detail
+                        class="text-xs uppercase text-neutral-400"
+                    >
                         Highest estimated enemy winrate versus your team
                     </span>
                 </div>
@@ -59,7 +72,10 @@ export function BanRecommendations() {
                             </p>
                         }
                     >
-                        <div class="flex gap-2 overflow-x-auto pb-1">
+                        <div
+                            data-ban-recommendations-list
+                            class="flex gap-2 overflow-x-auto pb-1"
+                        >
                             <For each={recommendations()}>
                                 {(suggestion, index) => {
                                     const champion = () =>
@@ -69,6 +85,7 @@ export function BanRecommendations() {
 
                                     return (
                                         <div
+                                            data-ban-recommendation-card
                                             class="flex min-w-48 flex-1 items-center gap-3 rounded-sm border border-neutral-700 bg-[#101010] p-2"
                                             title={`${formatPercentage(
                                                 suggestion.draftResult.winrate,
@@ -81,6 +98,7 @@ export function BanRecommendations() {
                                                 {index() + 1}
                                             </span>
                                             <ChampionIcon
+                                                data-ban-recommendation-icon
                                                 championKey={
                                                     suggestion.championKey
                                                 }
@@ -94,7 +112,10 @@ export function BanRecommendations() {
                                                         config,
                                                     )}
                                                 </div>
-                                                <div class="flex items-center gap-1 text-xs uppercase text-neutral-400">
+                                                <div
+                                                    data-ban-recommendation-secondary
+                                                    class="flex items-center gap-1 text-xs uppercase text-neutral-400"
+                                                >
                                                     <RoleIcon
                                                         role={suggestion.role}
                                                         class="h-4 w-4"
@@ -116,7 +137,10 @@ export function BanRecommendations() {
                                                     )}
                                                     %
                                                 </div>
-                                                <div class="text-[0.65rem] uppercase text-neutral-400">
+                                                <div
+                                                    data-ban-recommendation-secondary
+                                                    class="text-[0.65rem] uppercase text-neutral-400"
+                                                >
                                                     Enemy WR
                                                 </div>
                                             </div>

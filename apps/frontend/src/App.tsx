@@ -91,7 +91,10 @@ const App: Component = () => {
 
     const MainView = () => {
         return (
-            <div class="bg-[#101010] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden">
+            <div
+                data-main-view
+                class="bg-[#101010] flex min-h-0 min-w-0 flex-1 flex-col overflow-hidden"
+            >
                 <Switch>
                     <Match when={datasetState() === "errored"}>
                         <div class="flex flex-col justify-center items-center h-full text-2xl text-red-500 px-8 text-center">
@@ -168,7 +171,7 @@ const App: Component = () => {
                                         subType: "draft",
                                     })
                                 }
-                                class="shrink-0 xl:px-8"
+                                class="main-view-tabs shrink-0 xl:px-8"
                             />
                             <Switch>
                                 <Match
@@ -178,18 +181,27 @@ const App: Component = () => {
                                         class="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-5 xl:px-8"
                                         data-draft-view
                                     >
-                                        <div class="mb-4 flex gap-4">
+                                        <div
+                                            data-draft-toolbar="primary"
+                                            class="mb-4 flex gap-4"
+                                        >
                                             <Search />
                                             <TeamSelector />
                                             <RoleFilter class="hidden xl:inline-flex" />
-                                            <div class="hidden xl:inline-flex gap-3">
+                                            <div
+                                                data-draft-toolbar-actions
+                                                class="hidden xl:inline-flex gap-3"
+                                            >
                                                 <FilterMenu />
                                                 <Show when={isDesktop}>
                                                     <AnalyzeHoverToggle />
                                                 </Show>
                                             </div>
                                         </div>
-                                        <div class="flex justify-end mb-4 gap-4 xl:hidden">
+                                        <div
+                                            data-draft-toolbar="secondary"
+                                            class="flex justify-end mb-4 gap-4 xl:hidden"
+                                        >
                                             <RoleFilter class="w-full" />
                                             <FilterMenu />
                                             <Show when={isDesktop}>
@@ -232,6 +244,7 @@ const App: Component = () => {
 
     return (
         <div
+            data-app-shell
             class="flex h-screen min-h-0 flex-col overflow-hidden"
             style={{
                 height: "calc(var(--vh, 1vh) * 100)",
@@ -260,11 +273,17 @@ const App: Component = () => {
             <Dialog open={showFAQ()} onOpenChange={setShowFAQ}>
                 <FAQDialog />
             </Dialog>
-            <header class="bg-primary flex shrink-0 justify-between border-b-2 border-neutral-700 px-1 py-0">
-                <h1 class="text-4xl sm:text-5xl mr-2 ml-1 mt-1 mb-[0.4rem] font-semibold tracking-wide">
+            <header
+                data-app-header
+                class="bg-primary flex shrink-0 justify-between border-b-2 border-neutral-700 px-1 py-0"
+            >
+                <h1
+                    data-app-logo
+                    class="text-4xl sm:text-5xl mr-2 ml-1 mt-1 mb-[0.4rem] font-semibold tracking-wide"
+                >
                     DRAFTGAP
                 </h1>
-                <div class="flex items-center gap-4">
+                <div data-app-header-actions class="flex items-center gap-4">
                     <Show when={dataset()}>
                         <div class="text-xs text-neutral-400 hidden md:flex flex-col text-right uppercase">
                             <span>Patch {dataset()!.version}</span>
@@ -280,7 +299,7 @@ const App: Component = () => {
                     <LolClientStatusBadge
                         setShowDownloadModal={setShowDownloadModal}
                     />
-                    <div class="flex gap-1">
+                    <div data-app-header-controls class="flex gap-1">
                         <LanguageDropdownMenu />
                         <Dialog
                             open={showSettings()}
@@ -344,7 +363,10 @@ const App: Component = () => {
                     </main>
 
                     <Show when={mobileTab() !== undefined}>
-                        <footer class="bg-primary flex shrink-0 justify-evenly gap-4 border-t-2 border-neutral-700 px-4 py-2">
+                        <footer
+                            data-mobile-view-footer
+                            class="bg-primary flex shrink-0 justify-evenly gap-4 border-t-2 border-neutral-700 px-4 py-2"
+                        >
                             <For
                                 each={
                                     [
@@ -379,6 +401,7 @@ const App: Component = () => {
                                                 ? "primary"
                                                 : "secondary"
                                         }
+                                        data-mobile-view-tab={view.value}
                                         class="w-1/3"
                                     >
                                         {view.label}
