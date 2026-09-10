@@ -1,6 +1,9 @@
 name: Check upstream updates
 
 on:
+  push:
+    branches:
+      - main
   schedule:
     - cron: "37 8 * * *"
   workflow_dispatch:
@@ -39,25 +42,48 @@ jobs:
 
           local_sha="$(git rev-parse HEAD)"
           upstream_sha="$(git rev-parse refs/remotes/upstream/main)"
+          merge_base="$(git merge-base "$local_sha" "$upstream_sha" || true)"
 
-          if git merge-base --is-ancestor "$upstream_sha" "$local_sha"; then
+          # A personal fork commonly cherry-picks upstream changes to keep its
+          # own history linear. Treat patch-equivalent commits, and commits
+          # recorded by `git cherry-pick -x`, as already integrated.
+          git cherry "$local_sha" "$upstream_sha" |
+            while read -r status upstream_commit; do
+              if [[ "$status" == "-" ]]; then
+                continue
+              fi
+
+              integrated_commit="$(git log \
+                --format='%H' \
+                --max-count=1 \
+                --fixed-strings \
+                --grep="cherry picked from commit ${upstream_commit}" \
+                --grep="Upstream-Commit: ${upstream_commit}" \
+                "$local_sha")"
+              if [[ -n "$integrated_commit" ]]; then
+                continue
+              fi
+
+              echo "$upstream_commit"
+            done > "$RUNNER_TEMP/pending-upstream-commits"
+
+          if [[ ! -s "$RUNNER_TEMP/pending-upstream-commits" ]]; then
             echo "state=synced" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          commit_count="$(git rev-list --count "$local_sha..$upstream_sha")"
-          merge_base="$(git merge-base "$local_sha" "$upstream_sha" || true)"
+          commit_count="$(wc -l < "$RUNNER_TEMP/pending-upstream-commits" | tr -d ' ')"
           if [[ -n "$merge_base" ]]; then
             compare_url="https://github.com/vigovlugt/draftgap/compare/${merge_base}...${upstream_sha}"
           else
             compare_url="https://github.com/vigovlugt/draftgap/commits/main"
           fi
 
-          git log \
-            --format='%H%x09%h%x09%s' \
-            --max-count=50 \
-            "$local_sha..$upstream_sha" |
-            while IFS=$'\t' read -r full_sha short_sha subject; do
+          head -n 50 "$RUNNER_TEMP/pending-upstream-commits" |
+            while read -r full_sha; do
+              IFS=$'\t' read -r short_sha subject < <(
+                git show -s --format='%h%x09%s' "$full_sha"
+              )
               subject="${subject:0:160}"
               subject="${subject//@/＠}"
               printf -- '- [`%s`](https://github.com/vigovlugt/draftgap/commit/%s) %s\n' \
