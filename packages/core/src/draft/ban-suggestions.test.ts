@@ -69,6 +69,12 @@ describe("getBanSuggestions", () => {
         const ally = createChampion("ally", Role.Top);
         const counter = createChampion("counter", Role.Middle);
         const neutral = createChampion("neutral", Role.Jungle);
+        const middleField = createChampion(
+            "middle-field",
+            Role.Middle,
+            1500,
+            3000,
+        );
 
         counter.statsByRole[Role.Middle].matchup[Role.Top][ally.key] = {
             championKey: ally.key,
@@ -81,7 +87,7 @@ describe("getBanSuggestions", () => {
             games: 1000,
         };
 
-        const dataset = createDataset([ally, counter, neutral]);
+        const dataset = createDataset([ally, counter, neutral, middleField]);
         const config = {
             ignoreChampionWinrates: true,
             riskLevel: "medium" as const,
@@ -98,6 +104,7 @@ describe("getBanSuggestions", () => {
         );
 
         expect(suggestions[0]?.championKey).toBe(counter.key);
+        expect(suggestions[0]?.pickRate).toBe(0.5);
         expect(
             suggestions.filter(
                 (suggestion) => suggestion.championKey === counter.key,

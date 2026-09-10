@@ -10,7 +10,7 @@ import { formatPercentage } from "../../utils/rating";
 import { ChampionIcon } from "../icons/ChampionIcon";
 import { RoleIcon } from "../icons/roles/RoleIcon";
 
-const MAX_RECOMMENDATIONS = 5;
+const MAX_RECOMMENDATIONS = 10;
 
 export function BanRecommendations() {
     const { dataset } = useDataset();
@@ -21,6 +21,22 @@ export function BanRecommendations() {
 
     const recommendations = () =>
         banSuggestions().slice(0, MAX_RECOMMENDATIONS);
+
+    function scrollRecommendations(
+        event: WheelEvent & { currentTarget: HTMLDivElement },
+    ) {
+        const list = event.currentTarget;
+        if (
+            list.scrollWidth <= list.clientWidth ||
+            Math.abs(event.deltaX) >= Math.abs(event.deltaY)
+        ) {
+            return;
+        }
+
+        const previousScrollLeft = list.scrollLeft;
+        list.scrollLeft += event.deltaY;
+        if (list.scrollLeft !== previousScrollLeft) event.preventDefault();
+    }
 
     return (
         <Show when={isBanPhase()}>
@@ -37,29 +53,31 @@ export function BanRecommendations() {
                         <h2 class="text-lg font-semibold uppercase text-red-400">
                             Recommended bans
                         </h2>
-                        <span
-                            data-ban-recommendations-detail
-                            class="text-sm uppercase text-neutral-400"
-                        >
-                            Based on {allyTeamCompWithHovers().size} allied
-                            intent
-                            {allyTeamCompWithHovers().size === 1 ? "" : "s"}
-                        </span>
+                        <Show when={allyTeamCompWithHovers().size > 0}>
+                            <span
+                                data-ban-recommendations-detail
+                                class="text-sm uppercase text-neutral-400"
+                            >
+                                Based on {allyTeamCompWithHovers().size} allied
+                                intent
+                                {allyTeamCompWithHovers().size === 1 ? "" : "s"}
+                            </span>
+                        </Show>
                     </div>
                     <span
                         data-ban-recommendations-detail
                         class="text-xs uppercase text-neutral-400"
                     >
-                        Highest estimated enemy winrate versus your team
+                        Sorted by enemy winrate · Pick is 30-day role pick rate
                     </span>
                 </div>
 
                 <Show
                     when={allyTeamCompWithHovers().size > 0}
                     fallback={
-                        <p class="py-2 text-sm uppercase text-neutral-400">
-                            Hover a champion in the League client to generate
-                            team-aware ban recommendations.
+                        <p class="py-2 text-sm text-neutral-300">
+                            No allied intent yet — use the champion table below,
+                            ranked by winrate with pick rate shown during bans.
                         </p>
                     }
                 >
@@ -74,7 +92,11 @@ export function BanRecommendations() {
                     >
                         <div
                             data-ban-recommendations-list
+                            role="list"
+                            aria-label="Ban recommendations sorted by estimated enemy winrate"
+                            tabindex="0"
                             class="flex gap-2 overflow-x-auto pb-1"
+                            onWheel={scrollRecommendations}
                         >
                             <For each={recommendations()}>
                                 {(suggestion, index) => {
@@ -84,15 +106,20 @@ export function BanRecommendations() {
                                         ];
 
                                     return (
-                                        <div
+                                        <article
                                             data-ban-recommendation-card
-                                            class="flex min-w-48 flex-1 items-center gap-3 rounded-sm border border-neutral-700 bg-[#101010] p-2"
+                                            role="listitem"
+                                            class="grid w-64 shrink-0 grid-cols-[auto_auto_minmax(0,1fr)_auto] items-center gap-2 rounded-sm border border-neutral-700 bg-[#101010] p-2"
                                             title={`${formatPercentage(
                                                 suggestion.draftResult.winrate,
                                             )}% estimated enemy winrate if ${championName(
                                                 champion(),
                                                 config,
-                                            )} is picked into your current team`}
+                                            )} is picked into your current team; ${formatPercentage(
+                                                suggestion.pickRate,
+                                            )}% pick rate in ${displayNameByRole[
+                                                suggestion.role
+                                            ].toLowerCase()} over the last 30 days`}
                                         >
                                             <span class="w-4 shrink-0 text-center text-sm font-semibold text-neutral-400">
                                                 {index() + 1}
@@ -106,7 +133,10 @@ export function BanRecommendations() {
                                                 class="shrink-0"
                                             />
                                             <div class="min-w-0 flex-1">
-                                                <div class="truncate uppercase">
+                                                <div
+                                                    data-ban-recommendation-name
+                                                    class="whitespace-normal break-words uppercase leading-tight"
+                                                >
                                                     {championName(
                                                         champion(),
                                                         config,
@@ -129,22 +159,25 @@ export function BanRecommendations() {
                                                     </span>
                                                 </div>
                                             </div>
-                                            <div class="shrink-0 text-right">
-                                                <div class="font-semibold tabular-nums text-red-400">
+                                            <div
+                                                data-ban-recommendation-metrics
+                                                class="shrink-0 text-right text-xs leading-tight"
+                                            >
+                                                <div class="whitespace-nowrap font-semibold tabular-nums text-red-400">
                                                     {formatPercentage(
                                                         suggestion.draftResult
                                                             .winrate,
                                                     )}
-                                                    %
+                                                    % WR
                                                 </div>
-                                                <div
-                                                    data-ban-recommendation-secondary
-                                                    class="text-[0.65rem] uppercase text-neutral-400"
-                                                >
-                                                    Enemy WR
+                                                <div class="whitespace-nowrap tabular-nums text-neutral-300">
+                                                    {formatPercentage(
+                                                        suggestion.pickRate,
+                                                    )}
+                                                    % PICK
                                                 </div>
                                             </div>
-                                        </div>
+                                        </article>
                                     );
                                 }}
                             </For>

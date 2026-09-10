@@ -11,6 +11,10 @@ import { useDraft } from "../../contexts/DraftContext";
 import { displayNameByRole, Role } from "@draftgap/core/src/models/Role";
 import { Suggestion } from "@draftgap/core/src/draft/suggestions";
 import { getDirectMatchup } from "@draftgap/core/src/draft/direct-matchup";
+import {
+    getRoleGameTotals,
+    getRolePickRate,
+} from "@draftgap/core/src/draft/pick-rate";
 import { Table } from "../common/Table";
 import ChampionCell from "../common/ChampionCell";
 import { RoleCell } from "../common/RoleCell";
@@ -40,6 +44,7 @@ import { championName } from "../../utils/i18n";
 import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
 import { formatPercentage } from "../../utils/rating";
 import { RoleIcon } from "../icons/roles/RoleIcon";
+import { useLolClient } from "../../contexts/LolClientContext";
 
 export default function DraftTable() {
     const { dataset, dataset30Days } = useDataset();
@@ -55,6 +60,7 @@ export default function DraftTable() {
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
     const { allyTeamComp, opponentTeamComp } = useDraftAnalysis();
     const { isFavourite, setFavourite, config } = useUser();
+    const { isBanPhase } = useLolClient();
 
     let draftTableRoot!: HTMLDivElement;
 
@@ -64,6 +70,22 @@ export default function DraftTable() {
             : allySuggestions();
     const opposingTeamComp = () =>
         selection.team === "opponent" ? allyTeamComp() : opponentTeamComp();
+    const roleGameTotals = createMemo(() => {
+        const currentDataset = dataset30Days();
+        return currentDataset ? getRoleGameTotals(currentDataset) : undefined;
+    });
+    const rolePickRate = (suggestion: Suggestion) => {
+        const currentDataset = dataset30Days();
+        const totals = roleGameTotals();
+        if (!currentDataset || !totals) return undefined;
+
+        return getRolePickRate(
+            currentDataset,
+            suggestion.championKey,
+            suggestion.role,
+            totals,
+        );
+    };
     const directMatchup = (suggestion: Suggestion) =>
         dataset30Days()
             ? getDirectMatchup(
@@ -359,32 +381,57 @@ export default function DraftTable() {
               ] as ColumnDef<Suggestion>[])
             : []),
         {
-            header: "Winrate",
+            id: "winrate",
+            header: () => (isBanPhase() ? "WR / Pick" : "Winrate"),
             accessorFn: (suggestion) => suggestion.draftResult.totalRating,
             cell: (info) => {
                 const matchup = () => directMatchup(info.row.original);
+                const pickRate = () => rolePickRate(info.row.original);
 
                 return (
                     <div class="flex items-baseline justify-end gap-2">
                         <RatingText rating={info.getValue<number>()} />
-                        <Show when={matchup()}>
-                            <span
-                                class="text-[0.7em] tabular-nums text-neutral-400"
-                                title={`${formatPercentage(
-                                    matchup()!.winrate,
-                                )}% versus ${championName(
-                                    dataset()!.championData[
-                                        matchup()!.opponentChampionKey
-                                    ],
-                                    config,
-                                )} ${
-                                    displayNameByRole[info.row.original.role]
-                                }; ${Math.round(
-                                    matchup()!.games,
-                                ).toLocaleString()} games over the last 30 days`}
-                            >
-                                ({formatPercentage(matchup()!.winrate)})
-                            </span>
+                        <Show
+                            when={isBanPhase()}
+                            fallback={
+                                <Show when={matchup()}>
+                                    <span
+                                        class="text-[0.7em] tabular-nums text-neutral-400"
+                                        title={`${formatPercentage(
+                                            matchup()!.winrate,
+                                        )}% versus ${championName(
+                                            dataset()!.championData[
+                                                matchup()!.opponentChampionKey
+                                            ],
+                                            config,
+                                        )} ${
+                                            displayNameByRole[
+                                                info.row.original.role
+                                            ]
+                                        }; ${Math.round(
+                                            matchup()!.games,
+                                        ).toLocaleString()} games over the last 30 days`}
+                                    >
+                                        {`(${formatPercentage(
+                                            matchup()!.winrate,
+                                        )})`}
+                                    </span>
+                                </Show>
+                            }
+                        >
+                            <Show when={pickRate() !== undefined}>
+                                <span
+                                    class="whitespace-nowrap text-[0.7em] tabular-nums text-neutral-400"
+                                    title={`${formatPercentage(
+                                        pickRate()!,
+                                        2,
+                                    )}% pick rate in ${displayNameByRole[
+                                        info.row.original.role
+                                    ].toLowerCase()} over the last 30 days`}
+                                >
+                                    {`(P${formatPercentage(pickRate()!, 1)}%)`}
+                                </span>
+                            </Show>
                         </Show>
                     </div>
                 );

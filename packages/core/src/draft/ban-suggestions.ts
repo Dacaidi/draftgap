@@ -3,9 +3,11 @@ import { Role } from "../models/Role";
 import { AnalyzeDraftConfig } from "./analysis";
 import { getSuggestions, Suggestion } from "./suggestions";
 import { getStats } from "./utils";
+import { getRoleGameTotals, getRolePickRate } from "./pick-rate";
 
 export interface BanSuggestion extends Suggestion {
     games: number;
+    pickRate: number;
 }
 
 export function getBanSuggestions(
@@ -20,6 +22,7 @@ export function getBanSuggestions(
 
     const banned = new Set(bannedChampions);
     const bestSuggestionByChampion = new Map<string, BanSuggestion>();
+    const roleGameTotals = getRoleGameTotals(synergyMatchupDataset);
 
     const suggestions = getSuggestions(
         dataset,
@@ -49,6 +52,12 @@ export function getBanSuggestions(
         bestSuggestionByChampion.set(suggestion.championKey, {
             ...suggestion,
             games,
+            pickRate: getRolePickRate(
+                synergyMatchupDataset,
+                suggestion.championKey,
+                suggestion.role,
+                roleGameTotals,
+            ),
         });
     }
 
