@@ -4,6 +4,29 @@ import { getStats } from "./utils";
 
 export type RoleGameTotals = ReadonlyMap<Role, number>;
 
+export const PickRateLevel = {
+    VeryHigh: "very-high",
+    High: "high",
+    Medium: "medium",
+    Low: "low",
+} as const;
+
+export type PickRateLevel = (typeof PickRateLevel)[keyof typeof PickRateLevel];
+
+export const displayNameByPickRateLevel: Record<PickRateLevel, string> = {
+    [PickRateLevel.VeryHigh]: "Very High",
+    [PickRateLevel.High]: "High",
+    [PickRateLevel.Medium]: "Medium",
+    [PickRateLevel.Low]: "Low",
+};
+
+export function getPickRateLevel(pickRate: number): PickRateLevel {
+    if (pickRate >= 0.1) return PickRateLevel.VeryHigh;
+    if (pickRate >= 0.05) return PickRateLevel.High;
+    if (pickRate >= 0.02) return PickRateLevel.Medium;
+    return PickRateLevel.Low;
+}
+
 export function getRoleGameTotals(dataset: Dataset): RoleGameTotals {
     const totals = new Map<Role, number>(ROLES.map((role) => [role, 0]));
 

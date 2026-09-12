@@ -6,7 +6,12 @@ import {
 } from "../models/dataset/ChampionRoleData";
 import { Dataset } from "../models/dataset/Dataset";
 import { Role, ROLES } from "../models/Role";
-import { getRoleGameTotals, getRolePickRate } from "./pick-rate";
+import {
+    getPickRateLevel,
+    getRoleGameTotals,
+    getRolePickRate,
+    PickRateLevel,
+} from "./pick-rate";
 
 function createChampion(key: string, role: Role, games: number): ChampionData {
     const statsByRole = Object.fromEntries(
@@ -63,5 +68,14 @@ describe("role pick rate", () => {
         ]);
 
         expect(getRolePickRate(dataset, "candidate", Role.Support)).toBe(0);
+    });
+
+    test("groups pick rates into readable popularity levels", () => {
+        expect(getPickRateLevel(0.1)).toBe(PickRateLevel.VeryHigh);
+        expect(getPickRateLevel(0.099)).toBe(PickRateLevel.High);
+        expect(getPickRateLevel(0.05)).toBe(PickRateLevel.High);
+        expect(getPickRateLevel(0.049)).toBe(PickRateLevel.Medium);
+        expect(getPickRateLevel(0.02)).toBe(PickRateLevel.Medium);
+        expect(getPickRateLevel(0.019)).toBe(PickRateLevel.Low);
     });
 });

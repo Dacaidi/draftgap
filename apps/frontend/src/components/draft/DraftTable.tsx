@@ -45,6 +45,7 @@ import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
 import { formatPercentage } from "../../utils/rating";
 import { RoleIcon } from "../icons/roles/RoleIcon";
 import { useLolClient } from "../../contexts/LolClientContext";
+import { PickRateText } from "../common/PickRateText";
 
 export default function DraftTable() {
     const { dataset, dataset30Days } = useDataset();
@@ -58,9 +59,13 @@ export default function DraftTable() {
         setFavouriteFilter,
     } = useDraftFilters();
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
-    const { allyTeamComp, opponentTeamComp } = useDraftAnalysis();
+    const { allyTeamComp, allyTeamCompWithHovers, opponentTeamComp } =
+        useDraftAnalysis();
     const { isFavourite, setFavourite, config } = useUser();
     const { isBanPhase } = useLolClient();
+
+    const showPopularityInTable = () =>
+        isBanPhase() && allyTeamCompWithHovers().size === 0;
 
     let draftTableRoot!: HTMLDivElement;
 
@@ -384,7 +389,8 @@ export default function DraftTable() {
             : []),
         {
             id: "winrate",
-            header: () => (isBanPhase() ? "WR / Pick" : "Winrate"),
+            header: () =>
+                showPopularityInTable() ? "WR / Popularity" : "Winrate",
             accessorFn: (suggestion) => suggestion.draftResult.totalRating,
             cell: (info) => {
                 const matchup = () => directMatchup(info.row.original);
@@ -394,7 +400,7 @@ export default function DraftTable() {
                     <div class="flex items-baseline justify-end gap-2">
                         <RatingText rating={info.getValue<number>()} />
                         <Show
-                            when={isBanPhase()}
+                            when={showPopularityInTable()}
                             fallback={
                                 <Show when={matchup()}>
                                     <span
@@ -422,17 +428,11 @@ export default function DraftTable() {
                             }
                         >
                             <Show when={pickRate() !== undefined}>
-                                <span
-                                    class="whitespace-nowrap text-[0.7em] tabular-nums text-neutral-400"
-                                    title={`${formatPercentage(
-                                        pickRate()!,
-                                        2,
-                                    )}% pick rate in ${displayNameByRole[
-                                        info.row.original.role
-                                    ].toLowerCase()} over the last 30 days`}
-                                >
-                                    {`(P${formatPercentage(pickRate()!, 1)}%)`}
-                                </span>
+                                <PickRateText
+                                    pickRate={pickRate()!}
+                                    role={info.row.original.role}
+                                    class="text-[0.7em]"
+                                />
                             </Show>
                         </Show>
                     </div>
