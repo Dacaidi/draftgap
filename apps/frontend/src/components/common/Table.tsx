@@ -157,7 +157,7 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                                 element,
                                             )
                                         }
-                                        class="transition duration-200 ease-out group/row focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ally"
+                                        class="group/row focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ally"
                                         classList={{
                                             "hover:bg-neutral-800": Boolean(
                                                 props.onClickRow,

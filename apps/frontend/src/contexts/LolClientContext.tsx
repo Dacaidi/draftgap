@@ -1,6 +1,7 @@
 import {
     batch,
     createContext,
+    createMemo,
     createSignal,
     JSX,
     onCleanup,
@@ -365,7 +366,9 @@ export const createLolClientContext = () => {
         setClientState(ClientState.Disabled);
     };
 
-    const isBanPhase = () => {
+    // The LCU session is replaced every polling cycle. Memoizing this boolean
+    // prevents unchanged sessions from repeatedly refreshing ban-aware UI.
+    const isBanPhase = createMemo(() => {
         if (clientState() !== ClientState.InChampSelect) return false;
 
         const actionGroups = champSelectSession.actions;
@@ -378,7 +381,7 @@ export const createLolClientContext = () => {
             );
 
         return activeGroup?.some((action) => action.type === "ban") ?? false;
-    };
+    });
 
     onCleanup(() => {
         stopLolClientIntegration();
