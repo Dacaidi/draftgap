@@ -1,6 +1,7 @@
 import {
     displayNameByPickRateLevel,
     getPickRateLevel,
+    getPickRatePercentile,
     PickRateLevel,
 } from "@draftgap/core/src/draft/pick-rate";
 import { displayNameByRole, Role } from "@draftgap/core/src/models/Role";
@@ -10,6 +11,7 @@ import { cn } from "../../utils/style";
 type Props = {
     pickRate: number;
     role: Role;
+    distribution: readonly number[];
     class?: string;
 };
 
@@ -21,7 +23,9 @@ const classByLevel: Record<PickRateLevel, string> = {
 };
 
 export function PickRateText(props: Props) {
-    const level = () => getPickRateLevel(props.pickRate);
+    const percentile = () =>
+        getPickRatePercentile(props.pickRate, props.distribution);
+    const level = () => getPickRateLevel(props.pickRate, props.distribution);
 
     return (
         <span
@@ -32,7 +36,9 @@ export function PickRateText(props: Props) {
             )}
             title={`${formatPercentage(props.pickRate, 2)}% pick rate in ${displayNameByRole[
                 props.role
-            ].toLowerCase()} over the last 30 days. Very High: 10%+, High: 5-10%, Medium: 2-5%, Low: below 2%.`}
+            ].toLowerCase()} over the last 30 days; percentile rank ${Math.round(
+                percentile() * 100,
+            )}% for that role. Very High: top 10%, High: next 20%, Medium: next 30%, Low: remaining 40%.`}
         >
             {`${displayNameByPickRateLevel[level()]} (${formatPercentage(
                 props.pickRate,

@@ -1,5 +1,9 @@
 import { displayNameByRole } from "@draftgap/core/src/models/Role";
-import { For, Show } from "solid-js";
+import {
+    getRoleGameTotals,
+    getRolePickRateDistributions,
+} from "@draftgap/core/src/draft/pick-rate";
+import { createMemo, For, Show } from "solid-js";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
 import { useDraftSuggestions } from "../../contexts/DraftSuggestionsContext";
@@ -14,7 +18,7 @@ import { PickRateText } from "../common/PickRateText";
 const MAX_RECOMMENDATIONS = 10;
 
 export function BanRecommendations() {
-    const { dataset } = useDataset();
+    const { dataset, dataset30Days } = useDataset();
     const { config } = useUser();
     const { isBanPhase } = useLolClient();
     const { allyTeamCompWithHovers } = useDraftAnalysis();
@@ -22,6 +26,15 @@ export function BanRecommendations() {
 
     const recommendations = () =>
         banSuggestions().slice(0, MAX_RECOMMENDATIONS);
+    const rolePickRateDistributions = createMemo(() => {
+        const currentDataset = dataset30Days();
+        if (!currentDataset) return undefined;
+
+        return getRolePickRateDistributions(
+            currentDataset,
+            getRoleGameTotals(currentDataset),
+        );
+    });
 
     function scrollRecommendations(
         event: WheelEvent & { currentTarget: HTMLDivElement },
@@ -177,6 +190,11 @@ export function BanRecommendations() {
                                                         suggestion.pickRate
                                                     }
                                                     role={suggestion.role}
+                                                    distribution={
+                                                        rolePickRateDistributions()?.get(
+                                                            suggestion.role,
+                                                        ) ?? []
+                                                    }
                                                 />
                                             </div>
                                         </article>
