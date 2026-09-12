@@ -3,6 +3,7 @@ import { Role, ROLES } from "../models/Role";
 import { getStats } from "./utils";
 
 export type RoleGameTotals = ReadonlyMap<Role, number>;
+export type RolePickRateDistributions = ReadonlyMap<Role, readonly number[]>;
 
 export const PickRateLevel = {
     VeryHigh: "very-high",
@@ -20,10 +21,33 @@ export const displayNameByPickRateLevel: Record<PickRateLevel, string> = {
     [PickRateLevel.Low]: "Low",
 };
 
-export function getPickRateLevel(pickRate: number): PickRateLevel {
-    if (pickRate >= 0.1) return PickRateLevel.VeryHigh;
-    if (pickRate >= 0.05) return PickRateLevel.High;
-    if (pickRate >= 0.02) return PickRateLevel.Medium;
+export function getPickRatePercentile(
+    pickRate: number,
+    sortedDistribution: readonly number[],
+) {
+    if (sortedDistribution.length === 0) return 0;
+
+    let low = 0;
+    let high = sortedDistribution.length;
+
+    while (low < high) {
+        const middle = Math.floor((low + high) / 2);
+        if (sortedDistribution[middle] <= pickRate) low = middle + 1;
+        else high = middle;
+    }
+
+    return low / sortedDistribution.length;
+}
+
+export function getPickRateLevel(
+    pickRate: number,
+    sortedDistribution: readonly number[],
+): PickRateLevel {
+    const percentile = getPickRatePercentile(pickRate, sortedDistribution);
+
+    if (percentile > 0.9) return PickRateLevel.VeryHigh;
+    if (percentile > 0.7) return PickRateLevel.High;
+    if (percentile > 0.4) return PickRateLevel.Medium;
     return PickRateLevel.Low;
 }
 
@@ -58,4 +82,36 @@ export function getRolePickRate(
         1,
         (getStats(dataset, championKey, role).games * 2) / totalGames,
     );
+}
+
+export function getRolePickRateDistributions(
+    dataset: Dataset,
+    roleGameTotals = getRoleGameTotals(dataset),
+): RolePickRateDistributions {
+    const distributions = new Map<Role, number[]>(
+        ROLES.map((role) => [role, []]),
+    );
+
+    for (const champion of Object.values(dataset.championData)) {
+        for (const role of ROLES) {
+            if (champion.statsByRole[role].games <= 0) continue;
+
+            distributions
+                .get(role)!
+                .push(
+                    getRolePickRate(
+                        dataset,
+                        champion.key,
+                        role,
+                        roleGameTotals,
+                    ),
+                );
+        }
+    }
+
+    for (const distribution of distributions.values()) {
+        distribution.sort((a, b) => a - b);
+    }
+
+    return distributions;
 }

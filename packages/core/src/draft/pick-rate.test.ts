@@ -8,8 +8,10 @@ import { Dataset } from "../models/dataset/Dataset";
 import { Role, ROLES } from "../models/Role";
 import {
     getPickRateLevel,
+    getPickRatePercentile,
     getRoleGameTotals,
     getRolePickRate,
+    getRolePickRateDistributions,
     PickRateLevel,
 } from "./pick-rate";
 
@@ -70,12 +72,33 @@ describe("role pick rate", () => {
         expect(getRolePickRate(dataset, "candidate", Role.Support)).toBe(0);
     });
 
-    test("groups pick rates into readable popularity levels", () => {
-        expect(getPickRateLevel(0.1)).toBe(PickRateLevel.VeryHigh);
-        expect(getPickRateLevel(0.099)).toBe(PickRateLevel.High);
-        expect(getPickRateLevel(0.05)).toBe(PickRateLevel.High);
-        expect(getPickRateLevel(0.049)).toBe(PickRateLevel.Medium);
-        expect(getPickRateLevel(0.02)).toBe(PickRateLevel.Medium);
-        expect(getPickRateLevel(0.019)).toBe(PickRateLevel.Low);
+    test("groups pick rates by their percentile within a role", () => {
+        const distribution = [
+            0.01, 0.02, 0.03, 0.04, 0.05, 0.06, 0.07, 0.08, 0.09, 0.1,
+        ];
+
+        expect(getPickRatePercentile(0.1, distribution)).toBe(1);
+        expect(getPickRatePercentile(0.09, distribution)).toBe(0.9);
+        expect(getPickRateLevel(0.1, distribution)).toBe(
+            PickRateLevel.VeryHigh,
+        );
+        expect(getPickRateLevel(0.09, distribution)).toBe(PickRateLevel.High);
+        expect(getPickRateLevel(0.08, distribution)).toBe(PickRateLevel.High);
+        expect(getPickRateLevel(0.07, distribution)).toBe(PickRateLevel.Medium);
+        expect(getPickRateLevel(0.05, distribution)).toBe(PickRateLevel.Medium);
+        expect(getPickRateLevel(0.04, distribution)).toBe(PickRateLevel.Low);
+    });
+
+    test("builds separate distributions from played champions in each role", () => {
+        const dataset = createDataset([
+            createChampion("middle-low", Role.Middle, 100),
+            createChampion("middle-high", Role.Middle, 300),
+            createChampion("support", Role.Support, 200),
+        ]);
+        const distributions = getRolePickRateDistributions(dataset);
+
+        expect(distributions.get(Role.Middle)).toEqual([0.5, 1]);
+        expect(distributions.get(Role.Support)).toEqual([1]);
+        expect(distributions.get(Role.Top)).toEqual([]);
     });
 });

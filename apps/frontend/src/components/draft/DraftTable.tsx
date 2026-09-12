@@ -14,6 +14,7 @@ import { getDirectMatchup } from "@draftgap/core/src/draft/direct-matchup";
 import {
     getRoleGameTotals,
     getRolePickRate,
+    getRolePickRateDistributions,
 } from "@draftgap/core/src/draft/pick-rate";
 import { Table } from "../common/Table";
 import ChampionCell from "../common/ChampionCell";
@@ -78,6 +79,13 @@ export default function DraftTable() {
     const roleGameTotals = createMemo(() => {
         const currentDataset = dataset30Days();
         return currentDataset ? getRoleGameTotals(currentDataset) : undefined;
+    });
+    const rolePickRateDistributions = createMemo(() => {
+        const currentDataset = dataset30Days();
+        const totals = roleGameTotals();
+        return currentDataset && totals
+            ? getRolePickRateDistributions(currentDataset, totals)
+            : undefined;
     });
     const rolePickRate = (suggestion: Suggestion) => {
         const currentDataset = dataset30Days();
@@ -431,6 +439,11 @@ export default function DraftTable() {
                                 <PickRateText
                                     pickRate={pickRate()!}
                                     role={info.row.original.role}
+                                    distribution={
+                                        rolePickRateDistributions()?.get(
+                                            info.row.original.role,
+                                        ) ?? []
+                                    }
                                     class="text-[0.7em]"
                                 />
                             </Show>
