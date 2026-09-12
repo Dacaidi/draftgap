@@ -179,20 +179,22 @@ export default function DraftTable() {
             });
         }
 
-        if (config.unownedPlacement === "hidden") {
-            filtered = filtered.filter((s) => ownsChampion(s.championKey));
-        } else if (config.unownedPlacement === "bottom") {
-            filtered = [...filtered].sort((a, b) => {
-                const aUnowned = !ownsChampion(a.championKey);
-                const bUnowned = !ownsChampion(b.championKey);
-                if (aUnowned && !bUnowned) {
-                    return 1;
-                } else if (!aUnowned && bUnowned) {
-                    return -1;
-                } else {
-                    return 0;
-                }
-            });
+        if (!isBanPhase()) {
+            if (config.unownedPlacement === "hidden") {
+                filtered = filtered.filter((s) => ownsChampion(s.championKey));
+            } else if (config.unownedPlacement === "bottom") {
+                filtered = [...filtered].sort((a, b) => {
+                    const aUnowned = !ownsChampion(a.championKey);
+                    const bUnowned = !ownsChampion(b.championKey);
+                    if (aUnowned && !bUnowned) {
+                        return 1;
+                    } else if (!aUnowned && bUnowned) {
+                        return -1;
+                    } else {
+                        return 0;
+                    }
+                });
+            }
         }
 
         return filtered;
@@ -626,7 +628,7 @@ export default function DraftTable() {
                     class="min-h-0 flex-1"
                     rowClassName={(r) =>
                         bans.find((b) => b === r.original.championKey) ||
-                        !ownsChampion(r.original.championKey)
+                        (!isBanPhase() && !ownsChampion(r.original.championKey))
                             ? "opacity-30"
                             : ""
                     }
