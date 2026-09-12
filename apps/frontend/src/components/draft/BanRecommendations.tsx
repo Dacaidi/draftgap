@@ -9,6 +9,7 @@ import { championName } from "../../utils/i18n";
 import { formatPercentage } from "../../utils/rating";
 import { ChampionIcon } from "../icons/ChampionIcon";
 import { RoleIcon } from "../icons/roles/RoleIcon";
+import { PickRateText } from "../common/PickRateText";
 
 const MAX_RECOMMENDATIONS = 10;
 
@@ -68,7 +69,8 @@ export function BanRecommendations() {
                         data-ban-recommendations-detail
                         class="text-xs uppercase text-neutral-400"
                     >
-                        Sorted by enemy winrate · Pick is 30-day role pick rate
+                        Sorted by enemy winrate · Popularity uses 30-day role
+                        data
                     </span>
                 </div>
 
@@ -170,12 +172,12 @@ export function BanRecommendations() {
                                                     )}
                                                     % WR
                                                 </div>
-                                                <div class="whitespace-nowrap tabular-nums text-neutral-300">
-                                                    {formatPercentage(
-                                                        suggestion.pickRate,
-                                                    )}
-                                                    % PICK
-                                                </div>
+                                                <PickRateText
+                                                    pickRate={
+                                                        suggestion.pickRate
+                                                    }
+                                                    role={suggestion.role}
+                                                />
                                             </div>
                                         </article>
                                     );
