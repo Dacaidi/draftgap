@@ -1,4 +1,5 @@
 import { getChampionDataFromLolalytics } from "./lolalytics";
+import { getAvailableRiotVersion } from "./lolalytics/patch";
 import {
     deleteDatasetMatchupSynergyData,
     type Dataset,
@@ -137,7 +138,10 @@ export async function generateDatasets(
     tier: DataTier,
     options: DatasetGenerationOptions = {},
 ) {
-    const currentVersion = (await getVersions())[0];
+    const currentVersion = await getAvailableRiotVersion(
+        await getVersions(),
+        tier,
+    );
     console.log("Patch:", currentVersion);
 
     const [championsData, runes, items, summonerSpells, championsDataCn] =
