@@ -286,7 +286,7 @@ function extractData(text: string): QwikLolalyticsData {
 }
 
 export async function getLolalyticsQwikChampion(
-    patch: string,
+    patch: string | undefined,
     championId: string,
     role?: LolalyticsRole,
     matchupId?: string,
@@ -305,12 +305,12 @@ export async function getLolalyticsQwikChampion(
     }
 
     // convert patch from ex. 12.21.1 to 12.21
-    patch = patch.split(".").slice(0, 2).join(".");
+    patch = patch?.split(".").slice(0, 2).join(".");
 
     const queryParams = new URLSearchParams();
     queryParams.append("tier", tier);
     queryParams.append("region", "all");
-    queryParams.append("patch", patch);
+    if (patch) queryParams.append("patch", patch);
     if (role) {
         queryParams.append("lane", role);
     }
