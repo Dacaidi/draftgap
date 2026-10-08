@@ -4,6 +4,7 @@ import {
     createEffect,
     createResource,
     createSignal,
+    on,
     useContext,
 } from "solid-js";
 import { isTauri } from "@tauri-apps/api/core";
@@ -35,14 +36,16 @@ import {
 } from "../api/local-dataset-api";
 import { getVersions } from "../../../dataset/src/riot";
 import {
-    datasetPairMatchesManifest,
     isDatasetShape,
     parseHostedDatasetManifest,
     validateHostedDataset,
 } from "../utils/hosted-dataset";
+import {
+    getDatasetUpdateInfo,
+    hasNewerHostedDataset,
+} from "../utils/dataset-update";
+import { createDatasetUpdateToast } from "../utils/toast";
 
-const LOCAL_DATASET_MAX_AGE_DAYS = 7;
-const MILLISECONDS_PER_DAY = 1000 * 60 * 60 * 24;
 const HOSTED_DATASET_BASE_URL = "https://dacaidi.github.io/draftgap";
 const HOSTED_MANIFEST_FETCH_TIMEOUT_MS = 10_000;
 const HOSTED_DATASET_FILE_FETCH_TIMEOUT_MS = 180_000;
@@ -54,13 +57,10 @@ type DatasetPair = {
 
 export type HostedDatasetStatus = "checking" | "downloading";
 
-export type LocalDatasetUpdate = {
-    tier: DataTier;
-    currentVersion: string;
-    cachedVersion: string;
-    patchOutdated: boolean;
-    thirtyDaysStale: boolean;
-    thirtyDaysAgeDays?: number;
+export type LocalDatasetUpdate = ReturnType<typeof getDatasetUpdateInfo>;
+type DatasetUpdateFeedback = {
+    kind: "info" | "success" | "error";
+    message: string;
 };
 
 async function fetchRemoteDataset(name: "30-days" | "current-patch") {
@@ -177,10 +177,24 @@ function createDatasetContext() {
         createSignal<HostedDatasetStatus>();
     const [localDatasetUpdate, setLocalDatasetUpdate] =
         createSignal<LocalDatasetUpdate>();
+    const [datasetUpdateInfo, setDatasetUpdateInfo] =
+        createSignal<LocalDatasetUpdate>();
+    const [datasetUpdateCheckError, setDatasetUpdateCheckError] =
+        createSignal<string>();
+    const [datasetUpdateFeedback, setDatasetUpdateFeedback] =
+        createSignal<DatasetUpdateFeedback>();
+    const [isRefreshingDatasets, setIsRefreshingDatasets] = createSignal(false);
     const [isCheckingLocalDatasetUpdate, setIsCheckingLocalDatasetUpdate] =
         createSignal(false);
     let updateCheckId = 0;
     let datasetLoadId = 0;
+
+    createEffect(
+        on(
+            () => config.dataTier,
+            () => setDatasetUpdateFeedback(undefined),
+        ),
+    );
 
     if (desktop) {
         setDatasetFetch(tauriDatasetFetch);
@@ -202,7 +216,9 @@ function createDatasetContext() {
                 return (await fetchHostedDatasets(tier, manifest)).pair;
             }
 
-            const localDatasets = await loadLocalDatasets(tier);
+            const localDatasets =
+                (await loadLocalDatasets(tier)) ??
+                (info.refetching === true ? info.value : undefined);
             try {
                 if (loadId === datasetLoadId) {
                     setHostedDatasetStatus("checking");
@@ -217,8 +233,15 @@ function createDatasetContext() {
 
                 if (
                     localDatasets &&
-                    datasetPairMatchesManifest(localDatasets, manifest)
+                    !hasNewerHostedDataset(localDatasets, manifest)
                 ) {
+                    if (info.refetching === true) {
+                        setDatasetUpdateFeedback({
+                            kind: "info",
+                            message:
+                                "No newer data has been published. Your current data is still in use.",
+                        });
+                    }
                     return localDatasets;
                 }
 
@@ -227,6 +250,7 @@ function createDatasetContext() {
                 if (loadId !== datasetLoadId) {
                     throw new Error("Dataset download was superseded");
                 }
+                let cached = true;
                 try {
                     await saveDownloadedLocalDatasetPair(
                         tier,
@@ -234,10 +258,19 @@ function createDatasetContext() {
                         hosted.thirtyDaysJson,
                     );
                 } catch (error) {
+                    cached = false;
                     console.warn(
                         "Could not cache downloaded dataset pair",
                         error,
                     );
+                }
+                if (info.refetching === true) {
+                    setDatasetUpdateFeedback({
+                        kind: cached ? "success" : "info",
+                        message: cached
+                            ? `Data updated successfully (patch ${hosted.pair.currentPatch.version}).`
+                            : "New data is loaded, but could not be saved locally.",
+                    });
                 }
                 return hosted.pair;
             } catch (error) {
@@ -247,6 +280,14 @@ function createDatasetContext() {
                     });
                 }
                 console.warn(`Could not load hosted ${tier} datasets`, error);
+                if (info.refetching === true) {
+                    setDatasetUpdateFeedback({
+                        kind: "error",
+                        message: localDatasets
+                            ? "Could not check or download new data. Your current data is still in use. Please try again."
+                            : "Could not download new data. Please check your connection and try again.",
+                    });
+                }
                 if (localDatasets) return localDatasets;
 
                 if (tier === DEFAULT_DATA_TIER) {
@@ -304,7 +345,33 @@ function createDatasetContext() {
     const dataset = () => datasets()?.currentPatch;
     const dataset30Days = () => datasets()?.thirtyDays;
     const isLoaded = () => datasets.state === "ready" && datasets() != null;
-    const refreshLocalDatasets = () => refetch(true);
+    const refreshLocalDatasets = async () => {
+        if (isRefreshingDatasets() || datasets.loading) return;
+        const tier = config.dataTier;
+        setIsRefreshingDatasets(true);
+        setDatasetUpdateFeedback({
+            kind: "info",
+            message: "Checking for new data...",
+        });
+        try {
+            await refetch(true);
+            if (config.dataTier !== tier) return;
+            const feedback = datasetUpdateFeedback();
+            if (feedback)
+                createDatasetUpdateToast(
+                    feedback.message,
+                    feedback.kind === "error",
+                );
+        } catch (error) {
+            console.error("Could not refresh datasets", error);
+            if (config.dataTier !== tier) return;
+            const message = "Could not update data. Please try again.";
+            setDatasetUpdateFeedback({ kind: "error", message });
+            createDatasetUpdateToast(message, true);
+        } finally {
+            setIsRefreshingDatasets(false);
+        }
+    };
 
     createEffect(() => {
         const datasetPair = datasets();
@@ -312,44 +379,35 @@ function createDatasetContext() {
         const checkId = ++updateCheckId;
 
         setLocalDatasetUpdate(undefined);
+        setDatasetUpdateInfo(undefined);
+        setDatasetUpdateCheckError(undefined);
         setIsCheckingLocalDatasetUpdate(false);
         if (!desktop || datasetPair === undefined) {
             return;
         }
 
         setIsCheckingLocalDatasetUpdate(true);
-        void getVersions()
-            .then((versions) => {
+        void Promise.allSettled([
+            getVersions(),
+            fetchHostedManifest(tier, true),
+        ])
+            .then(([versionResult, manifestResult]) => {
                 if (checkId !== updateCheckId) return;
-
-                const currentVersion = versions[0];
-                if (!currentVersion) return;
-
-                const generatedAt = new Date(
-                    datasetPair.thirtyDays.date,
-                ).getTime();
-                const thirtyDaysAgeDays = Number.isFinite(generatedAt)
-                    ? Math.floor(
-                          Math.max(0, Date.now() - generatedAt) /
-                              MILLISECONDS_PER_DAY,
-                      )
-                    : undefined;
-                const patchOutdated =
-                    datasetPair.currentPatch.version !== currentVersion;
-                const thirtyDaysStale =
-                    thirtyDaysAgeDays === undefined ||
-                    thirtyDaysAgeDays >= LOCAL_DATASET_MAX_AGE_DAYS;
-
-                if (!patchOutdated && !thirtyDaysStale) return;
-
-                setLocalDatasetUpdate({
-                    tier,
-                    currentVersion,
-                    cachedVersion: datasetPair.currentPatch.version,
-                    patchOutdated,
-                    thirtyDaysStale,
-                    thirtyDaysAgeDays,
-                });
+                if (manifestResult.status === "rejected") {
+                    setDatasetUpdateCheckError(
+                        "Could not check published data. Your cached data is still available.",
+                    );
+                    return;
+                }
+                const info = getDatasetUpdateInfo(
+                    datasetPair,
+                    manifestResult.value,
+                    versionResult.status === "fulfilled"
+                        ? versionResult.value[0]
+                        : undefined,
+                );
+                setDatasetUpdateInfo(info);
+                if (info.available) setLocalDatasetUpdate(info);
             })
             .catch((error) => {
                 console.error("Could not check local dataset freshness", error);
@@ -375,6 +433,10 @@ function createDatasetContext() {
         generationProgress,
         hostedDatasetStatus,
         localDatasetUpdate,
+        datasetUpdateInfo,
+        datasetUpdateCheckError,
+        datasetUpdateFeedback,
+        isRefreshingDatasets,
         isCheckingLocalDatasetUpdate,
         isLoaded,
         refreshLocalDatasets,

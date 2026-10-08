@@ -48,6 +48,19 @@ export const createErrorToast = (message: string) => {
     );
 };
 
+export const createDatasetUpdateToast = (message: string, failed = false) =>
+    toast.custom(
+        (t) => (
+            <Toast
+                t={t}
+                icon={failed ? exclamationCircle : check}
+                title="Data update"
+                content={message}
+            />
+        ),
+        { duration: 6000 },
+    );
+
 export const createMustSelectToast = () => {
     return toast.custom(
         (t) => (
