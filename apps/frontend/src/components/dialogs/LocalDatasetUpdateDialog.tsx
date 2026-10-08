@@ -21,12 +21,9 @@ export function LocalDatasetUpdateDialog() {
         const update = localDatasetUpdate();
         if (!update) return undefined;
 
-        return [
-            update.tier,
-            update.cachedVersion,
-            update.currentVersion,
-            update.thirtyDaysAgeDays ?? "unknown",
-        ].join(":");
+        return [update.tier, update.cachedVersion, update.generationId].join(
+            ":",
+        );
     };
     const isOpen = () => {
         const key = updateKey();
@@ -56,14 +53,22 @@ export function LocalDatasetUpdateDialog() {
                             localDatasetUpdate()?.tier ?? DEFAULT_DATA_TIER
                         ]
                     }{" "}
-                    data is out of date.
+                    data has a newer published update.
                 </p>
                 <div class="space-y-2 text-neutral-300">
                     <Show when={localDatasetUpdate()?.patchOutdated}>
                         <p>
-                            A new League patch is available: cached patch{" "}
-                            {localDatasetUpdate()?.cachedVersion}, current patch{" "}
-                            {localDatasetUpdate()?.currentVersion}.
+                            A new dataset is ready: current patch{" "}
+                            {localDatasetUpdate()?.cachedVersion}, available
+                            patch {localDatasetUpdate()?.availableVersion}.
+                        </p>
+                    </Show>
+                    <Show when={localDatasetUpdate()?.waitingForPatch}>
+                        <p>
+                            Data for League patch{" "}
+                            {localDatasetUpdate()?.currentVersion} is still
+                            being prepared. This download refreshes the
+                            available data.
                         </p>
                     </Show>
                     <Show when={localDatasetUpdate()?.thirtyDaysStale}>

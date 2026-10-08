@@ -7,6 +7,52 @@ import {
 } from "./fetch";
 
 describe("fetchDatasetWithRetry", () => {
+    test("retries incomplete HTTP 200 payloads and keeps the recovered body readable", async () => {
+        let attempts = 0;
+        const response = await fetchDatasetWithRetry(
+            async () =>
+                new Response(
+                    JSON.stringify(++attempts === 1 ? {} : { team: [] }),
+                ),
+            "https://example.test/team",
+            undefined,
+            {
+                maxAttempts: 2,
+                sleep: async () => {},
+                validateResponse: async (result) => {
+                    const data = (await result.clone().json()) as {
+                        team?: unknown;
+                    };
+                    if (!data.team) throw new Error("Incomplete team data");
+                },
+            },
+        );
+        expect(attempts).toBe(2);
+        expect(await response.json()).toEqual({ team: [] });
+    });
+
+    test("fails after bounded retries rather than accepting a permanently incomplete payload", async () => {
+        let attempts = 0;
+        await expect(
+            fetchDatasetWithRetry(
+                async () => {
+                    attempts++;
+                    return new Response("{}");
+                },
+                "https://example.test/team",
+                undefined,
+                {
+                    maxAttempts: 3,
+                    sleep: async () => {},
+                    validateResponse: async () => {
+                        throw new Error("Incomplete team data");
+                    },
+                },
+            ),
+        ).rejects.toThrow("Incomplete team data");
+        expect(attempts).toBe(3);
+    });
+
     test("retries 429 responses and respects Retry-After", async () => {
         const consoleLog = spyOn(console, "log").mockImplementation(() => {});
         const delays: number[] = [];

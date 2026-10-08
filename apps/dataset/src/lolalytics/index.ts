@@ -115,12 +115,15 @@ export async function getChampionRoleDataFromLolalytics(
         ];
     }
 
-    const [buildData, teamData] = await Promise.all([
+    const [buildResult, teamResult] = await Promise.allSettled([
         buildPromise,
         fetchers.getChampion2(version, championId, role, tier),
     ]);
+    if (buildResult.status === "rejected") throw buildResult.reason;
+    const buildData = buildResult.value;
     if (!buildData || buildData.header.n === 0) return undefined;
-    return [buildData, teamData];
+    if (teamResult.status === "rejected") throw teamResult.reason;
+    return [buildData, teamResult.value];
 }
 
 export async function getChampionDataFromLolalytics(

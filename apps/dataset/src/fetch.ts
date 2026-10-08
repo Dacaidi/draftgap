@@ -12,6 +12,7 @@ const DATASET_FETCH_RETRY_MAX_DELAY_MS = 30_000;
 const DATASET_FETCH_MAX_RETRY_AFTER_MS = 5 * 60_000;
 
 export type DatasetFetchRetryOptions = {
+    validateResponse?: (response: Response) => Promise<void>;
     maxAttempts?: number;
     baseDelayMs?: number;
     maxDelayMs?: number;
@@ -249,7 +250,17 @@ export async function fetchDatasetWithRetry(
                 () => fetchOnce(fetcher, input, init, callerSignal, timeoutMs),
                 callerSignal,
             );
-            if (response.ok) return response;
+            if (response.ok) {
+                try {
+                    await options.validateResponse?.(response);
+                    if (callerSignal?.aborted)
+                        throw abortError(callerSignal.reason);
+                    return response;
+                } catch (error) {
+                    await response.body?.cancel().catch(() => {});
+                    throw error;
+                }
+            }
 
             const retryAfterMs = parseRetryAfter(
                 response.headers.get("Retry-After"),
@@ -305,8 +316,10 @@ export async function fetchDatasetWithRetry(
 export async function datasetFetch(
     input: string | URL | Request,
     init?: RequestInit,
+    options: DatasetFetchRetryOptions = {},
 ) {
     return await fetchDatasetWithRetry(activeFetch, input, init, {
+        ...options,
         runAttempt: (operation, signal) =>
             requestLimiter.run(operation, signal),
     });

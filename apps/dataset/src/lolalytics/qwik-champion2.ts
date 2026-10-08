@@ -1,4 +1,4 @@
-import { type LolalyticsRole } from "./roles";
+import { LOLALYTICS_ROLES, type LolalyticsRole } from "./roles";
 import {
     DEFAULT_DATA_TIER,
     type DataTier,
@@ -23,6 +23,48 @@ export type Team = {
     support: Array<number[]>;
     jungle: Array<number[]>;
 };
+
+export function isLolalyticsTeamData(
+    value: unknown,
+    role?: LolalyticsRole,
+): value is LolalyticsChampion2Response {
+    if (!value || typeof value !== "object") return false;
+    const data = value as Partial<LolalyticsChampion2Response>;
+    if (
+        data.response?.valid !== true ||
+        !data.team ||
+        typeof data.team !== "object"
+    )
+        return false;
+
+    const presentRoles = LOLALYTICS_ROLES.filter(
+        (lane) => data.team?.[lane] !== undefined,
+    );
+    // The champion's own lane is omitted. The default lane is unknown here,
+    // but all four other lanes must be present, even when their arrays are empty.
+    const requiredRoles = role
+        ? LOLALYTICS_ROLES.filter((lane) => lane !== role)
+        : presentRoles;
+    if (requiredRoles.length < 4) return false;
+    return requiredRoles.every((lane) => {
+        const rows = data.team?.[lane];
+        return (
+            Array.isArray(rows) &&
+            rows.every(
+                (row) =>
+                    Array.isArray(row) &&
+                    row.length >= 6 &&
+                    Number.isFinite(row[0]) &&
+                    row[0] > 0 &&
+                    Number.isFinite(row[1]) &&
+                    row[1] >= 0 &&
+                    row[1] <= 100 &&
+                    Number.isFinite(row[5]) &&
+                    row[5] >= 0,
+            )
+        );
+    });
+}
 
 export async function getLolalyticsQwikChampion2(
     patch: string,
@@ -54,9 +96,25 @@ export async function getLolalyticsQwikChampion2(
     //     queryParams.append("vslane", matchupRole);
     // }
 
-    const res = await datasetFetch(
-        `https://a1.lolalytics.com/mega/?${queryParams.toString()}`,
-    );
+    const url = `https://a1.lolalytics.com/mega/?${queryParams.toString()}`;
+    const res = await datasetFetch(url, undefined, {
+        validateResponse: async (response) => {
+            let data: unknown;
+            try {
+                data = await response.clone().json();
+            } catch (error) {
+                throw new Error(
+                    `Invalid Lolalytics team JSON for ${championId}/${role ?? "default"} (${tier}, ${patch}): ${url}`,
+                    { cause: error },
+                );
+            }
+            if (!isLolalyticsTeamData(data, role)) {
+                throw new Error(
+                    `Incomplete Lolalytics team data for ${championId}/${role ?? "default"} (${tier}, ${patch}): ${url}`,
+                );
+            }
+        },
+    });
 
     const json = (await res.json()) as LolalyticsChampion2Response;
 

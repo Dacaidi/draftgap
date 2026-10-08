@@ -32,7 +32,14 @@ import { Button } from "../common/Button";
 export default function SettingsDialog() {
     const { isDesktop } = useMedia();
     const { config, setConfig } = useUser();
-    const { datasetState, refreshLocalDatasets } = useDataset();
+    const {
+        datasetState,
+        refreshLocalDatasets,
+        datasetUpdateInfo,
+        datasetUpdateCheckError,
+        datasetUpdateFeedback,
+        isRefreshingDatasets,
+    } = useDataset();
 
     const riskLevelOptions: ButtonGroupOption<RiskLevel>[] = RiskLevel.map(
         (level) => ({
@@ -142,6 +149,7 @@ export default function SettingsDialog() {
                             size="sm"
                             layout="grid"
                             disabled={
+                                isRefreshingDatasets() ||
                                 datasetState() === "pending" ||
                                 datasetState() === "refreshing"
                             }
@@ -155,14 +163,47 @@ export default function SettingsDialog() {
                         <Button
                             variant="secondary"
                             disabled={
+                                isRefreshingDatasets() ||
                                 datasetState() === "pending" ||
                                 datasetState() === "refreshing"
                             }
                             onClick={() => refreshLocalDatasets()}
                             class="self-start"
                         >
-                            Check for data update
+                            {isRefreshingDatasets()
+                                ? "Checking for data update..."
+                                : "Check for data update"}
                         </Button>
+                        <Show when={datasetUpdateInfo()?.waitingForPatch}>
+                            <p class="text-sm text-neutral-400">
+                                Data for patch{" "}
+                                {datasetUpdateInfo()?.currentVersion} is still
+                                being prepared. Available patch:{" "}
+                                {datasetUpdateInfo()?.availableVersion}.
+                            </p>
+                        </Show>
+                        <Show when={datasetUpdateCheckError()}>
+                            <p class="text-sm text-amber-300" role="status">
+                                {datasetUpdateCheckError()}
+                            </p>
+                        </Show>
+                        <Show when={datasetUpdateFeedback()}>
+                            {(feedback) => (
+                                <p
+                                    class="text-sm"
+                                    classList={{
+                                        "text-red-400":
+                                            feedback().kind === "error",
+                                        "text-neutral-300":
+                                            feedback().kind !== "error",
+                                    }}
+                                    role="status"
+                                    aria-live="polite"
+                                >
+                                    {feedback().message}
+                                </p>
+                            )}
+                        </Show>
                     </div>
                 </div>
             </Show>

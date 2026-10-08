@@ -81,6 +81,25 @@ describe("groupLolalyticsStatsByTime", () => {
 });
 
 describe("getChampionRoleDataFromLolalytics", () => {
+    test("still skips an explicitly empty role if its parallel team request fails", async () => {
+        const fetchers: LolalyticsFetchers = {
+            getChampion: async () => buildData(0),
+            getChampion2: async () => {
+                throw new Error("Incomplete team data");
+            },
+        };
+        expect(
+            await getChampionRoleDataFromLolalytics(
+                "16.20.1",
+                "Ahri",
+                "jungle",
+                "emerald",
+                undefined,
+                fetchers,
+            ),
+        ).toBeUndefined();
+    });
+
     test("does not request team data after a zero-share role returns 404", async () => {
         let teamRequests = 0;
         const fetchers: LolalyticsFetchers = {
