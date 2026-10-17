@@ -240,6 +240,7 @@ export const createLolClientContext = () => {
         });
     };
 
+    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const checkImportFavourites = async () => {
         const DRAFTGAP_IMPORT_FAVOURITES_LAST_ASKED =
             "draftgap-import-favourites-last-asked";
@@ -329,7 +330,8 @@ export const createLolClientContext = () => {
                     batch(() => {
                         if (clientState() !== ClientState.InChampSelect) {
                             updateUnownedChampions();
-                            checkImportFavourites();
+                            // Disabled: favourites import prompt repeats, likely because WebView2 drops recent localStorage writes.
+                            // checkImportFavourites();
                             resetAll();
                             setBans([]);
                         }
