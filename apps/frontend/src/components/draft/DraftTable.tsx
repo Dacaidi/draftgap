@@ -3,9 +3,7 @@ import {
     ColumnDef,
     createSolidTable,
     getCoreRowModel,
-    getSortedRowModel,
     Row,
-    SortingState,
 } from "@tanstack/solid-table";
 import { useDraft } from "../../contexts/DraftContext";
 import { displayNameByRole, Role } from "@draftgap/core/src/models/Role";
@@ -47,6 +45,7 @@ import { formatPercentage } from "../../utils/rating";
 import { RoleIcon } from "../icons/roles/RoleIcon";
 import { useLolClient } from "../../contexts/LolClientContext";
 import { PickRateText } from "../common/PickRateText";
+import { DRAFT_TABLE_SORTING } from "./draft-table-sorting";
 
 export default function DraftTable() {
     const { dataset, dataset30Days } = useDataset();
@@ -397,8 +396,7 @@ export default function DraftTable() {
             : []),
         {
             id: "winrate",
-            header: () =>
-                showPopularityInTable() ? "WR / Popularity" : "Winrate",
+            header: "Winrate",
             accessorFn: (suggestion) => suggestion.draftResult.totalRating,
             cell: (info) => {
                 const matchup = () => directMatchup(info.row.original);
@@ -407,46 +405,41 @@ export default function DraftTable() {
                 return (
                     <div class="flex items-baseline justify-end gap-2">
                         <RatingText rating={info.getValue<number>()} />
+                        <Show when={!showPopularityInTable() && matchup()}>
+                            <span
+                                class="text-[0.7em] tabular-nums text-neutral-400"
+                                title={`${formatPercentage(
+                                    matchup()!.winrate,
+                                )}% versus ${championName(
+                                    dataset()!.championData[
+                                        matchup()!.opponentChampionKey
+                                    ],
+                                    config,
+                                )} ${
+                                    displayNameByRole[info.row.original.role]
+                                }; ${Math.round(
+                                    matchup()!.games,
+                                ).toLocaleString()} games over the last 30 days`}
+                            >
+                                {`(${formatPercentage(matchup()!.winrate)})`}
+                            </span>
+                        </Show>
                         <Show
-                            when={showPopularityInTable()}
-                            fallback={
-                                <Show when={matchup()}>
-                                    <span
-                                        class="text-[0.7em] tabular-nums text-neutral-400"
-                                        title={`${formatPercentage(
-                                            matchup()!.winrate,
-                                        )}% versus ${championName(
-                                            dataset()!.championData[
-                                                matchup()!.opponentChampionKey
-                                            ],
-                                            config,
-                                        )} ${
-                                            displayNameByRole[
-                                                info.row.original.role
-                                            ]
-                                        }; ${Math.round(
-                                            matchup()!.games,
-                                        ).toLocaleString()} games over the last 30 days`}
-                                    >
-                                        {`(${formatPercentage(
-                                            matchup()!.winrate,
-                                        )})`}
-                                    </span>
-                                </Show>
+                            when={
+                                showPopularityInTable() &&
+                                pickRate() !== undefined
                             }
                         >
-                            <Show when={pickRate() !== undefined}>
-                                <PickRateText
-                                    pickRate={pickRate()!}
-                                    role={info.row.original.role}
-                                    distribution={
-                                        rolePickRateDistributions()?.get(
-                                            info.row.original.role,
-                                        ) ?? []
-                                    }
-                                    class="text-[0.7em]"
-                                />
-                            </Show>
+                            <PickRateText
+                                pickRate={pickRate()!}
+                                role={info.row.original.role}
+                                distribution={
+                                    rolePickRateDistributions()?.get(
+                                        info.row.original.role,
+                                    ) ?? []
+                                }
+                                class="text-[0.7em]"
+                            />
                         </Show>
                     </div>
                 );
@@ -482,22 +475,15 @@ export default function DraftTable() {
         },
     ];
 
-    const [sorting, setSorting] = createSignal<SortingState>([]);
     const table = createSolidTable({
+        ...DRAFT_TABLE_SORTING,
         get data() {
             return filteredSuggestions();
         },
         get columns() {
             return columns();
         },
-        state: {
-            get sorting() {
-                return sorting();
-            },
-        },
-        onSortingChange: setSorting,
         getCoreRowModel: getCoreRowModel(),
-        getSortedRowModel: getSortedRowModel(),
     });
 
     function pick(row: Row<Suggestion>) {
