@@ -46,9 +46,11 @@ import { RoleIcon } from "../icons/roles/RoleIcon";
 import { useLolClient } from "../../contexts/LolClientContext";
 import { PickRateText } from "../common/PickRateText";
 import { DRAFT_TABLE_SORTING } from "./draft-table-sorting";
+import { useMedia } from "../../hooks/useMedia";
 
 export default function DraftTable() {
     const { dataset, dataset30Days } = useDataset();
+    const { isMobileLayout } = useMedia();
     const { selection, pickChampion, select, bans, ownedChampions } =
         useDraft();
     const {
@@ -499,10 +501,13 @@ export default function DraftTable() {
             row.original.role,
         );
 
-        draftTableRoot
-            .closest("[data-draft-view]")
-            ?.querySelector<HTMLInputElement>("[data-draft-search]")
-            ?.focus();
+        // Avoid opening the on-screen keyboard after every pick on mobile
+        if (!isMobileLayout()) {
+            draftTableRoot
+                .closest("[data-draft-view]")
+                ?.querySelector<HTMLInputElement>("[data-draft-search]")
+                ?.focus();
+        }
     }
 
     onMount(() => {
