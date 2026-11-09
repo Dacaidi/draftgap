@@ -9,7 +9,6 @@ import { createStore } from "solid-js/store";
 import { Role } from "@draftgap/core/src/models/Role";
 import { Team } from "@draftgap/core/src/models/Team";
 import { useDraftView } from "./DraftViewContext";
-import { useMedia } from "../hooks/useMedia";
 import { useDataset } from "./DatasetContext";
 import { useDraftFilters } from "./DraftFiltersContext";
 import { resetTeamsAndSelectAlly } from "./reset-draft";
@@ -30,7 +29,6 @@ type Selection = {
 export function createDraftContext() {
     const { dataset } = useDataset();
     const { setCurrentDraftView, currentDraftView } = useDraftView();
-    const { isMobileLayout } = useMedia();
     const { resetDraftFilters } = useDraftFilters();
 
     const [allyTeam, setAllyTeam] = createStore<TeamPicks>([
@@ -114,17 +112,6 @@ export function createDraftContext() {
                 role,
                 hoverKey: undefined,
             });
-
-            if (
-                updateView &&
-                !isMobileLayout() &&
-                currentDraftView().type === "draft"
-            ) {
-                setCurrentDraftView({
-                    type: "draft",
-                    subType: team,
-                });
-            }
 
             if (updateSelection) {
                 let nextIndex = getNextPick(team);
@@ -213,7 +200,7 @@ export function createDraftContext() {
     };
 
     const [selection, setSelection] = createStore<Selection>({
-        team: isMobileLayout() ? undefined : "ally",
+        team: "ally",
         index: 0,
     });
 
@@ -241,7 +228,6 @@ export function createDraftContext() {
 
         setCurrentDraftView({
             type: "draft",
-            subType: "draft",
         });
     };
 

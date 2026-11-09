@@ -382,10 +382,42 @@
 
     [data-mobile-view-tab] {
         height: 26px;
+        min-height: 26px;
         padding-top: 0;
         padding-bottom: 0;
         font-size: 0.875rem;
         line-height: 1;
+    }
+
+    [data-mobile-team-strip] {
+        gap: 4px;
+        margin-bottom: 8px;
+    }
+
+    [data-mobile-team-row] {
+        gap: 4px;
+        padding-top: 4px;
+        padding-bottom: 0;
+    }
+
+    [data-mobile-pick-slot] {
+        flex: 0 1 36px;
+        width: 36px;
+        height: 36px;
+        aspect-ratio: auto;
+    }
+}
+
+/* Only very short mobile windows need a second scroll area. Keep the
+   champion list usable instead of shrinking it beneath the team controls. */
+@media (max-width: 639px) and (max-height: 520px) {
+    [data-draft-view] {
+        overflow-y: auto;
+    }
+
+    [data-draft-table] {
+        flex-shrink: 0;
+        min-height: 160px;
     }
 }
 

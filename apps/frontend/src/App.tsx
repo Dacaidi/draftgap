@@ -13,11 +13,11 @@ import { RoleFilter } from "./components/draft/RoleFilter";
 import { Search } from "./components/draft/Search";
 import { TeamSelector } from "./components/draft/TeamSelector";
 import { TeamSidebar } from "./components/draft/TeamSidebar";
+import { MobileTeamStrip } from "./components/draft/MobileTeamStrip";
 import { cog_6Tooth } from "solid-heroicons/solid";
 import AnalysisView from "./components/views/analysis/AnalysisView";
 import { LolClientStatusBadge } from "./components/draft/LolClientStatusBadge";
 import { useLolClient } from "./contexts/LolClientContext";
-import { Badge } from "./components/common/Badge";
 import { FilterMenu } from "./components/draft/FilterMenu";
 import { formatDistance } from "date-fns";
 import { ViewTabs } from "./components/common/ViewTabs";
@@ -70,19 +70,6 @@ const App: Component = () => {
     const [showSettings, setShowSettings] = createSignal(false);
     const [showFAQ, setShowFAQ] = createSignal(false);
     const [showDownloadModal, setShowDownloadModal] = createSignal(false);
-    let wasMobileLayout = isMobileLayout();
-
-    createEffect(() => {
-        const mobileLayout = isMobileLayout();
-        if (mobileLayout && !wasMobileLayout) {
-            const view = currentDraftView();
-            if (view.type === "draft") {
-                setCurrentDraftView({ type: "draft", subType: "draft" });
-            }
-        }
-        wasMobileLayout = mobileLayout;
-    });
-
     const timeAgo = () =>
         dataset()
             ? formatDistance(new Date(dataset()!.date), new Date(), {
@@ -145,34 +132,12 @@ const App: Component = () => {
                     <Match when={isLoaded()}>
                         <div class="flex min-h-0 flex-1 flex-col">
                             <ViewTabs
-                                tabs={
-                                    [
-                                        {
-                                            label: "Draft",
-                                            value: "draft",
-                                        },
-                                        {
-                                            label: "Draft Analysis",
-                                            value: "analysis",
-                                        },
-                                        ...(config.enableBetaFeatures
-                                            ? ([
-                                                  {
-                                                      label: "Builds",
-                                                      value: "builds",
-                                                  },
-                                              ] as const)
-                                            : []),
-                                    ] as const
-                                }
+                                tabs={viewTabs()}
                                 selected={currentDraftView().type}
                                 onChange={(type) =>
-                                    setCurrentDraftView({
-                                        type,
-                                        subType: "draft",
-                                    })
+                                    setCurrentDraftView({ type })
                                 }
-                                class="main-view-tabs shrink-0 xl:px-8"
+                                class="main-view-tabs hidden shrink-0 sm:block xl:px-8"
                             />
                             <Switch>
                                 <Match
@@ -182,12 +147,17 @@ const App: Component = () => {
                                         class="flex min-h-0 flex-1 flex-col overflow-hidden px-4 py-5 xl:px-8"
                                         data-draft-view
                                     >
+                                        <Show when={isMobileLayout()}>
+                                            <MobileTeamStrip />
+                                        </Show>
                                         <div
                                             data-draft-toolbar="primary"
                                             class="mb-4 flex gap-4"
                                         >
                                             <Search />
-                                            <TeamSelector />
+                                            <Show when={!isMobileLayout()}>
+                                                <TeamSelector />
+                                            </Show>
                                             <RoleFilter class="hidden xl:inline-flex" />
                                             <div
                                                 data-draft-toolbar-actions
@@ -235,13 +205,14 @@ const App: Component = () => {
         );
     };
 
-    const mobileTab = () => {
-        const current = currentDraftView();
-        if (current.type === "draft") {
-            return current.subType;
-        }
-        return undefined;
-    };
+    const viewTabs = () =>
+        [
+            { label: "Draft", value: "draft" },
+            { label: "Draft Analysis", value: "analysis" },
+            ...(config.enableBetaFeatures
+                ? ([{ label: "Builds", value: "builds" }] as const)
+                : []),
+        ] as const;
 
     return (
         <div
@@ -350,66 +321,42 @@ const App: Component = () => {
                 </Match>
                 <Match when={true}>
                     <main class="flex min-h-0 flex-1 flex-col overflow-hidden">
-                        <Switch>
-                            <Match when={mobileTab() === "ally"}>
-                                <TeamSidebar team="ally" />
-                            </Match>
-                            <Match when={mobileTab() === "opponent"}>
-                                <TeamSidebar team="opponent" />
-                            </Match>
-                            <Match when={true}>
-                                <MainView />
-                            </Match>
-                        </Switch>
+                        <MainView />
                     </main>
-
-                    <Show when={mobileTab() !== undefined}>
-                        <footer
+                    <Show when={isLoaded()}>
+                        <nav
                             data-mobile-view-footer
-                            class="bg-primary flex shrink-0 justify-evenly gap-4 border-t-2 border-neutral-700 px-4 py-2"
+                            aria-label="Main navigation"
+                            class="bg-primary flex shrink-0 gap-2 border-t-2 border-neutral-700 px-4 py-2"
                         >
-                            <For
-                                each={
-                                    [
-                                        { value: "ally", label: "Ally" },
-                                        {
-                                            value: "draft",
-                                            label: "Champions",
-                                        },
-                                        {
-                                            value: "opponent",
-                                            label: "Opponent",
-                                        },
-                                    ] as const
-                                }
-                            >
-                                {(view) => (
-                                    <Badge
-                                        as="button"
+                            <For each={viewTabs()}>
+                                {(tab) => (
+                                    <button
                                         type="button"
-                                        aria-label={`Show ${view.label}`}
+                                        data-mobile-view-tab={tab.value}
                                         aria-pressed={
-                                            mobileTab() === view.value
+                                            currentDraftView().type ===
+                                            tab.value
                                         }
+                                        class="min-h-11 flex-1 rounded-md px-2 uppercase font-semibold text-neutral-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70"
+                                        classList={{
+                                            "text-neutral-50! bg-neutral-800":
+                                                currentDraftView().type ===
+                                                tab.value,
+                                        }}
                                         onClick={() =>
                                             setCurrentDraftView({
-                                                type: "draft",
-                                                subType: view.value,
+                                                type: tab.value,
                                             })
                                         }
-                                        theme={
-                                            mobileTab() === view.value
-                                                ? "primary"
-                                                : "secondary"
-                                        }
-                                        data-mobile-view-tab={view.value}
-                                        class="w-1/3"
                                     >
-                                        {view.label}
-                                    </Badge>
+                                        {tab.value === "analysis"
+                                            ? "Analysis"
+                                            : tab.label}
+                                    </button>
                                 )}
                             </For>
-                        </footer>
+                        </nav>
                     </Show>
                 </Match>
             </Switch>
