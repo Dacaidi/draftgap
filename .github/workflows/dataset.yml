@@ -2,7 +2,10 @@ name: "Update hosted rank datasets"
 
 on:
   schedule:
-    - cron: "17 12 * * *"
+    # Local Finnish morning, including automatic summer/winter time changes.
+    # GitHub schedules are best-effort and may start later than this time.
+    - cron: "17 9 * * *"
+      timezone: "Europe/Helsinki"
   workflow_dispatch:
 
 permissions:

@@ -40,6 +40,10 @@ bun run --filter @draftgap/frontend tauri-dev
 
 Champion metadata and assets come from [Riot Data Dragon](https://developer.riotgames.com/docs/lol#data-dragon). Statistical datasets are derived from [Lolalytics](https://lolalytics.com/) and are generated separately for each supported tier. These sources are not affiliated with this fork, and statistical recommendations are not guarantees of game outcomes.
 
+Hosted datasets are scheduled daily at **09:17 Finland time** (`Europe/Helsinki`), including summer/winter time changes. GitHub Actions schedules are best-effort, so generation and publication may happen later.
+
+The desktop app checks for hosted data at startup, when changing the statistics tier, or through **Check for data update** in Settings. Leaving it open does not automatically refresh the data each day. The patch number can stay the same across daily updates; use **Last updated** to check the dataset's age.
+
 ## License and attribution
 
 The project is distributed under the [MIT License](LICENSE). The original copyright and license notice are retained, and the upstream DraftGap project is credited above.
