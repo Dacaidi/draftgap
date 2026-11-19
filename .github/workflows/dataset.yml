@@ -18,7 +18,7 @@ concurrency:
 jobs:
   generate:
     name: "Generate ${{ matrix.tier }}"
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     timeout-minutes: 360
     strategy:
       fail-fast: false
@@ -67,7 +67,7 @@ jobs:
   deploy:
     name: "Deploy datasets to GitHub Pages"
     needs: generate
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-26.04
     permissions:
       contents: read
       pages: write
@@ -78,6 +78,9 @@ jobs:
     steps:
       - name: Merge generated tiers
         uses: actions/download-artifact@v8
+        env:
+          # v8.0.2 emits Buffer() warnings during download; revisit on upgrade.
+          NODE_OPTIONS: --disable-warning=DEP0005
         with:
           pattern: rank-dataset-*
           path: _site
@@ -95,5 +98,8 @@ jobs:
       - name: Deploy GitHub Pages
         id: deployment
         uses: actions/deploy-pages@v5
+        env:
+          # v5.0.1 still imports node:punycode; keep other warnings visible.
+          NODE_OPTIONS: --disable-warning=DEP0040
         with:
           artifact_name: github-pages-${{ github.run_attempt }}
