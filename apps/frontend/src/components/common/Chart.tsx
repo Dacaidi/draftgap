@@ -8,6 +8,7 @@ import { createEffect, createSignal, onCleanup } from "solid-js";
 
 type Props<T extends keyof ChartTypeRegistry> = {
     chart: ChartConfiguration<T>;
+    ariaLabel?: string;
 };
 
 ChartJs.defaults.backgroundColor = "#00ff00";
@@ -52,5 +53,11 @@ export function Chart<T extends keyof ChartTypeRegistry>(props: Props<T>) {
         chart()?.destroy();
     });
 
-    return <canvas ref={setCanvas} />;
+    return (
+        <canvas
+            ref={setCanvas}
+            role="img"
+            aria-label={props.ariaLabel ?? "Chart"}
+        />
+    );
 }

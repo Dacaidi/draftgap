@@ -22,10 +22,16 @@ export function analyzeDraftExtra(
             defaultChampionRoleData(),
     );
 
+    const timeBuckets = fullDataset.timeBuckets;
+
     return {
-        ratingByTime: Array.from({ length: 5 }).map((_, i) => {
+        timeBuckets,
+        ratingByTime: timeBuckets.map((_, i) => {
             const championTimeRatings = teamChampions.map((champion) => {
-                const championTime = champion.statsByTime[i];
+                const championTime = champion.statsByTime[i] ?? {
+                    games: 0,
+                    wins: 0,
+                };
 
                 const baseChampionStats = addStats(champion, {
                     games: priorGames,

@@ -31,6 +31,7 @@ function createDataset(games: Record<string, Partial<Record<Role, number>>>) {
         version: "test",
         date: "",
         championData,
+        timeBuckets: [],
         itemData: {},
         runeData: {},
         runePathData: {},
