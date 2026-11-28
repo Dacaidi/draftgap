@@ -68,7 +68,7 @@ export function FAQDialog() {
             <div>
                 <h2 class="text-2xl uppercase">Where is the data from?</h2>
                 <p class="font-body">
-                    The data used are the current Emerald+{" "}
+                    Statistical data comes from{" "}
                     <a
                         href="https://lolalytics.com"
                         class="text-blue-500"
@@ -76,23 +76,26 @@ export function FAQDialog() {
                     >
                         Lolalytics
                     </a>{" "}
-                    solo/duo winrates from all regions of the last 30 days. The
-                    data is updated every 12 hours.
+                    solo/duo games across all regions. The desktop app supports
+                    Gold, Gold+, Platinum, Platinum+, Emerald, Emerald+,
+                    Diamond, and Diamond+. Hosted current-patch and 30-day data
+                    for each tier is generated daily on GitHub.
                 </p>
             </div>
 
             <div>
                 <h2 class="text-2xl uppercase">
-                    Why can I not filter data based on rank?
+                    How does rank filtering work?
                 </h2>
                 <p class="font-body">
-                    Since we are using data from Lolalytics, adding more ranks
-                    to filter on will result in more than doubling the cost we
-                    are imposing on Lolalytics. We do not want to impose any
-                    more cost than we already are, thus we only support data for
-                    one rank. Besides this reason, allowing for filtering by
-                    higher ranks will also result in a lot more data sample size
-                    issues, resulting in less accurate predictions.
+                    The desktop app downloads only the selected tier and keeps a
+                    complete local cache. If the hosted copy is unavailable,
+                    DraftGap keeps using that cache. Emerald+ also has the
+                    original DraftGap dataset as an extra remote fallback when
+                    no local cache is available. If no remote source or cache
+                    can be used, the selected tier is generated locally. Higher
+                    ranks have smaller sample sizes, which can make predictions
+                    less reliable.
                 </p>
             </div>
 

@@ -8,6 +8,7 @@ import {
 import { createStore } from "solid-js/store";
 import { Role } from "@draftgap/core/src/models/Role";
 import { DraftGapConfig } from "@draftgap/core/src/models/user/Config";
+import { DEFAULT_DATA_TIER } from "@draftgap/core/src/models/dataset/DataTier";
 
 type FavouritePick = `${string}:${Role}`;
 
@@ -16,7 +17,8 @@ const DEFAULT_CONFIG: DraftGapConfig = {
     ignoreChampionWinrates: false,
     riskLevel: "medium",
     minGames: 1000,
-    analyzeHovers: true,
+    dataTier: DEFAULT_DATA_TIER,
+    analyzeHovers: false,
 
     // UI
     showFavouritesAtTop: false,

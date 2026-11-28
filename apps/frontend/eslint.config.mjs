@@ -10,7 +10,7 @@ export default defineConfig(
     tseslint.configs.recommended,
     // @ts-ignore
     solid.configs["flat/recommended"],
-    globalIgnores(["dist", "tailwind.config.js"]),
+    globalIgnores(["dist", "src-tauri/target", "tailwind.config.js"]),
     {
         rules: {
             "@typescript-eslint/ban-ts-comment": "off",

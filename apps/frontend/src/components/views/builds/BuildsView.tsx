@@ -1,7 +1,7 @@
 import { Show } from "solid-js";
 import { Team } from "@draftgap/core/src/models/Team";
 import { ViewTabs } from "../../common/ViewTabs";
-import { getPickedChampionKey, useDraft } from "../../../contexts/DraftContext";
+import { useDraft } from "../../../contexts/DraftContext";
 import { overflowEllipsis } from "../../../utils/strings";
 import { BuildView } from "./BuildView";
 import { useBuild } from "../../../contexts/BuildContext";
@@ -21,7 +21,7 @@ export const BuildsViewTabs = (props: { team: Team }) => {
             tabs={new Array(5)
                 .fill(null)
                 .map((_, i) => i)
-                .filter((i) => getPickedChampionKey(team()[i]) !== undefined)
+                .filter((i) => team()[i].championKey !== undefined)
                 .map((i) => ({
                     value: { team: props.team, index: i },
                     label: overflowEllipsis(
@@ -48,11 +48,11 @@ export const BuildsView = () => {
 
     return (
         <>
-            <div class="flex justify-between bg-primary xl:px-8 border-b border-neutral-700">
+            <div class="bg-primary flex shrink-0 justify-between border-b border-neutral-700 xl:px-8">
                 <BuildsViewTabs team="ally" />
                 <BuildsViewTabs team="opponent" />
             </div>
-            <div class="py-5 px-4 xl:px-8 h-full overflow-y-auto">
+            <div class="min-h-0 flex-1 overflow-y-auto px-4 py-5 xl:px-8">
                 <Show
                     when={buildPick()}
                     fallback={

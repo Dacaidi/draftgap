@@ -1,6 +1,10 @@
 import { JSX, splitProps } from "solid-js";
 import { useDataset } from "../../contexts/DatasetContext";
 import { cn } from "../../utils/style";
+import {
+    championIconSources,
+    applyImageFallback,
+} from "../../utils/champion-images";
 
 export function ChampionIcon(
     props: {
@@ -11,6 +15,8 @@ export function ChampionIcon(
 ) {
     const [, other] = splitProps(props, ["championKey", "imgClass", "size"]);
     const { dataset } = useDataset();
+    const champion = () => dataset()!.championData[props.championKey];
+    const sources = () => championIconSources(dataset()!.version, champion());
 
     return (
         <div
@@ -22,14 +28,12 @@ export function ChampionIcon(
             }}
         >
             <img
-                src={`https://ddragon.leagueoflegends.com/cdn/${
-                    dataset()!.version
-                }/img/champion/${
-                    dataset()!.championData[props.championKey].id
-                }.png`}
-                loading="lazy"
+                src={sources().primary}
+                onError={(event) =>
+                    applyImageFallback(event.currentTarget, sources().fallback)
+                }
                 class={`absolute ${props.imgClass}`}
-                alt={dataset()!.championData[props.championKey].name}
+                alt={champion().name}
                 style={{
                     width: props.size * 1.11 + "px",
                     height: props.size * 1.11 + "px",

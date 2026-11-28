@@ -13,39 +13,97 @@ export function tooltip(
     accessor: Accessor<HelpPopoverParams>,
 ) {
     const {
+        popoverTarget,
         setPopoverContent,
         setPopoverPlacement,
         setPopoverTarget,
         setPopoverVisible,
     } = useTooltip();
 
-    let timeout: NodeJS.Timeout | undefined;
+    let timeout: ReturnType<typeof setTimeout> | undefined;
+    let isHovered = false;
+    let isFocused = false;
+    const previousDescription = el.getAttribute("aria-describedby");
 
-    const onHover = (e: MouseEvent) => {
+    const show = () => {
         const { content, placement, delay } = accessor();
-        const target = e.target as HTMLElement;
+
+        clearTimeout(timeout);
 
         timeout = setTimeout(() => {
             setPopoverContent(content);
             setPopoverPlacement(placement ?? "top");
-            setPopoverTarget(target);
+            setPopoverTarget(el);
             setPopoverVisible(true);
         }, delay ?? 300);
     };
 
-    const onHoverLeave = () => {
-        setPopoverVisible(false);
+    const hide = () => {
         clearTimeout(timeout);
+        if (isHovered || isFocused) return;
+        if (popoverTarget() !== el) return;
+
+        setPopoverVisible(false);
+    };
+
+    const onMouseEnter = () => {
+        isHovered = true;
+        show();
+    };
+
+    const onMouseLeave = () => {
+        isHovered = false;
+        hide();
+    };
+
+    const onFocus = () => {
+        isFocused = true;
+        show();
+    };
+
+    const onBlur = () => {
+        isFocused = false;
+        hide();
+    };
+
+    const onKeyDown = (event: KeyboardEvent) => {
+        if (event.key !== "Escape") return;
+
+        clearTimeout(timeout);
+        if (popoverTarget() !== el) return;
+
+        isHovered = false;
+        isFocused = false;
+        setPopoverVisible(false);
     };
 
     onMount(() => {
-        el.addEventListener("mouseleave", onHoverLeave);
-        el.addEventListener("mouseenter", onHover);
+        el.setAttribute(
+            "aria-describedby",
+            [previousDescription, "tooltip"].filter(Boolean).join(" "),
+        );
+        el.addEventListener("mouseenter", onMouseEnter);
+        el.addEventListener("mouseleave", onMouseLeave);
+        el.addEventListener("focus", onFocus);
+        el.addEventListener("blur", onBlur);
+        el.addEventListener("keydown", onKeyDown);
     });
 
     onCleanup(() => {
-        el.removeEventListener("mouseleave", onHoverLeave);
-        el.removeEventListener("mouseenter", onHover);
+        el.removeEventListener("mouseenter", onMouseEnter);
+        el.removeEventListener("mouseleave", onMouseLeave);
+        el.removeEventListener("focus", onFocus);
+        el.removeEventListener("blur", onBlur);
+        el.removeEventListener("keydown", onKeyDown);
+        if (previousDescription) {
+            el.setAttribute("aria-describedby", previousDescription);
+        } else {
+            el.removeAttribute("aria-describedby");
+        }
+        if (popoverTarget() === el) {
+            setPopoverVisible(false);
+            setPopoverTarget(null);
+        }
         clearTimeout(timeout);
     });
 }

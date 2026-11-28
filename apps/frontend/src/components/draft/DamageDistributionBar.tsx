@@ -20,6 +20,10 @@ export function DamageDistributionBar(props: { team: Team }) {
     const physicalPercentage = () =>
         damageDistribution()!.physical / totalDamage();
     const truePercentage = () => damageDistribution()!.true / totalDamage();
+    const damageDistributionLabel = () =>
+        `Damage mix: ${Math.round(physicalPercentage() * 100)}% physical, ${Math.round(
+            magicPercentage() * 100,
+        )}% magic, ${Math.round(truePercentage() * 100)}% true damage`;
 
     return (
         <Show
@@ -31,7 +35,12 @@ export function DamageDistributionBar(props: { team: Team }) {
                     0
             }
         >
-            <div class="flex h-1 absolute right-0 left-0 top-0 w-full">
+            <div
+                class="flex h-1 absolute right-0 left-0 top-0 w-full"
+                role="img"
+                aria-label={damageDistributionLabel()}
+                title={damageDistributionLabel()}
+            >
                 <div
                     class="bg-red-500 transition-all duration-500"
                     style={{ width: physicalPercentage() * 100 + "%" }}

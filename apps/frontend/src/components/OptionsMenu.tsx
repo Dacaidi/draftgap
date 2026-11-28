@@ -29,15 +29,14 @@ type Props = {
 export const OptionsDropdownMenu: Component<Props> = (props) => {
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger>
-                <button
-                    class={cn(
-                        buttonVariants({ variant: "transparent" }),
-                        "px-1 py-2",
-                    )}
-                >
-                    <Icon path={ellipsisVertical} class="w-7" />
-                </button>
+            <DropdownMenuTrigger
+                aria-label="Open DraftGap menu"
+                class={cn(
+                    buttonVariants({ variant: "transparent" }),
+                    "size-11 justify-center p-0",
+                )}
+            >
+                <Icon path={ellipsisVertical} class="w-7" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent class="w-56">
                 <DropdownMenuLabel>Draftgap</DropdownMenuLabel>
@@ -57,6 +56,7 @@ export const OptionsDropdownMenu: Component<Props> = (props) => {
                         <a
                             href="mailto:vigovlugt+draftgap@gmail.com"
                             target="_blank"
+                            rel="noreferrer"
                             class="flex items-center"
                         >
                             <DropdownMenuIcon path={envelope} />
@@ -67,6 +67,7 @@ export const OptionsDropdownMenu: Component<Props> = (props) => {
                         <a
                             href="https://leagueofitems.com"
                             target="_blank"
+                            rel="noreferrer"
                             class="flex items-center"
                         >
                             <DropdownMenuIcon path={globeAlt} />
@@ -77,6 +78,7 @@ export const OptionsDropdownMenu: Component<Props> = (props) => {
                         <a
                             href="https://www.buymeacoffee.com/vigovlugt"
                             target="_blank"
+                            rel="noreferrer"
                             class="flex items-center"
                         >
                             <DropdownMenuIcon path={heart} />

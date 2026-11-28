@@ -6,6 +6,10 @@ import { useDraft } from "../../contexts/DraftContext";
 import { useDataset } from "../../contexts/DatasetContext";
 import { useUser } from "../../contexts/UserContext";
 import { championName } from "../../utils/i18n";
+import {
+    applyImageFallback,
+    championIconSources,
+} from "../../utils/champion-images";
 import { cn } from "../../utils/style";
 import {
     DropdownMenu,
@@ -46,6 +50,7 @@ function BanSlot(props: { team: Team; index: number }) {
     const championKey = () => bans[props.team][props.index];
     const champion = () =>
         championKey() ? dataset()?.championData[championKey()!] : undefined;
+    const sources = () => championIconSources(dataset()!.version, champion()!);
 
     const isSelected = () =>
         selection.type === "ban" &&
@@ -66,8 +71,8 @@ function BanSlot(props: { team: Team; index: number }) {
                     }
                 >
                     <DropdownMenuTrigger
-                        as="div"
-                        role="button"
+                        data-ban-slot
+                        aria-pressed={isSelected()}
                         aria-label={
                             champion()
                                 ? `Ban ${props.index + 1}: ${champion()!.name}`
@@ -98,9 +103,13 @@ function BanSlot(props: { team: Team; index: number }) {
                             }
                         >
                             <img
-                                src={`https://ddragon.leagueoflegends.com/cdn/${
-                                    dataset()!.version
-                                }/img/champion/${champion()!.id}.png`}
+                                src={sources().primary}
+                                onError={(e) =>
+                                    applyImageFallback(
+                                        e.currentTarget,
+                                        sources().fallback,
+                                    )
+                                }
                                 alt={champion()!.name}
                                 class="absolute inset-0 w-full h-full object-cover scale-110"
                                 style={{ filter: "grayscale(1)" }}

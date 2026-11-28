@@ -8,12 +8,21 @@ import {
     SortingState,
 } from "@tanstack/solid-table";
 import { useDraft } from "../../contexts/DraftContext";
-import { Role } from "@draftgap/core/src/models/Role";
+import { displayNameByRole, Role } from "@draftgap/core/src/models/Role";
 import { Suggestion } from "@draftgap/core/src/draft/suggestions";
+import { getDirectMatchup } from "@draftgap/core/src/draft/direct-matchup";
 import { Table } from "../common/Table";
 import ChampionCell from "../common/ChampionCell";
 import { RoleCell } from "../common/RoleCell";
-import { createSignal, Show, untrack } from "solid-js";
+import {
+    batch,
+    createMemo,
+    createSignal,
+    For,
+    onCleanup,
+    onMount,
+    Show,
+} from "solid-js";
 import { Icon } from "solid-heroicons";
 import { star } from "solid-heroicons/solid";
 import { star as starOutline } from "solid-heroicons/outline";
@@ -27,60 +36,67 @@ import { informationCircle } from "solid-heroicons/solid-mini";
 import { Dialog } from "../common/Dialog";
 import { ChampionDraftAnalysisDialog } from "../dialogs/ChampionDraftAnalysisDialog";
 import { Team } from "@draftgap/core/src/models/Team";
-import { championMatchesSearch } from "../../utils/search";
-import { focusSearch } from "./Search";
-import { createTableKeyboardNavigation } from "../../hooks/createTableKeyboardNavigation";
+import { championName } from "../../utils/i18n";
+import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
+import { formatPercentage } from "../../utils/rating";
+import { RoleIcon } from "../icons/roles/RoleIcon";
 import { ChampionContextMenuContent } from "./ChampionContextMenu";
-import {
-    PreviewDraftAnalysisProvider,
-    PreviewPick,
-    useDraftAnalysis,
-} from "../../contexts/DraftAnalysisContext";
-
-function PreviewDialogContent(props: { pick: PreviewPick }) {
-    // Champion shown in the dialog; starts at the previewed champion and can
-    // change when clicking matchups/duos inside the dialog.
-    const [shown, setShown] = createSignal<{
-        team: Team;
-        championKey: string;
-    }>(
-        untrack(() => ({
-            team: props.pick.team,
-            championKey: props.pick.championKey,
-        })),
-    );
-
-    return (
-        <ChampionDraftAnalysisDialog
-            team={shown().team}
-            championKey={shown().championKey}
-            openChampionDraftAnalysisModal={(team, championKey) =>
-                setShown({ team, championKey })
-            }
-        />
-    );
-}
+import { useMedia } from "../../hooks/useMedia";
+import { championMatchesSearch } from "../../utils/search";
 
 export default function DraftTable() {
-    const { dataset } = useDataset();
+    const { dataset, dataset30Days } = useDataset();
+    const { isMobileLayout } = useMedia();
     const {
         selection,
-        selectedChampionKey,
         pickChampion,
         select,
         allBans,
         ownedChampions,
+        allyTeam,
+        opponentTeam,
     } = useDraft();
-    const { allyTeamComp, opponentTeamComp } = useDraftAnalysis();
-    const { search, roleFilter, favouriteFilter, setFavouriteFilter } =
-        useDraftFilters();
+    const {
+        search,
+        roleFilter,
+        setRoleFilter,
+        favouriteFilter,
+        setFavouriteFilter,
+    } = useDraftFilters();
     const { allySuggestions, opponentSuggestions } = useDraftSuggestions();
+    const { allyTeamComp, opponentTeamComp } = useDraftAnalysis();
     const { isFavourite, setFavourite, config } = useUser();
+
+    let draftTableRoot!: HTMLDivElement;
 
     const suggestions = () =>
         selection.team === "opponent"
             ? opponentSuggestions()
             : allySuggestions();
+    const opposingTeamComp = () =>
+        selection.team === "opponent" ? allyTeamComp() : opponentTeamComp();
+    const directMatchup = (suggestion: Suggestion) =>
+        dataset30Days()
+            ? getDirectMatchup(
+                  dataset30Days()!,
+                  suggestion.championKey,
+                  suggestion.role,
+                  opposingTeamComp(),
+              )
+            : undefined;
+    const matchupAssumptions = createMemo(() => {
+        const suggestionRoles = new Set(
+            suggestions().map((suggestion) => suggestion.role),
+        );
+
+        return [...opposingTeamComp()]
+            .filter(
+                ([role]) =>
+                    suggestionRoles.has(role) &&
+                    (roleFilter() === undefined || roleFilter() === role),
+            )
+            .sort(([roleA], [roleB]) => roleA - roleB);
+    });
 
     const ownsChampion = (championKey: string) =>
         // If we don't have owned champions, we are not logged in, so we own all champions.
@@ -149,59 +165,99 @@ export default function DraftTable() {
             filtered = [...filtered].sort((a, b) => {
                 const aUnowned = !ownsChampion(a.championKey);
                 const bUnowned = !ownsChampion(b.championKey);
-                if (aUnowned && !bUnowned) {
-                    return 1;
-                } else if (!aUnowned && bUnowned) {
-                    return -1;
-                } else {
-                    return 0;
-                }
+                return Number(aUnowned) - Number(bUnowned);
             });
         }
 
         return filtered;
     };
 
-    // Role the champion in the selected slot is currently played in, so only
-    // that row is highlighted instead of every role of the champion.
-    const selectedChampionRole = () => {
-        const key = selectedChampionKey();
-        if (!key) return undefined;
-        const comp =
-            selection.team === "opponent" ? opponentTeamComp() : allyTeamComp();
-        return [...comp.entries()].find(([, k]) => k === key)?.[0];
-    };
+    const [analysisPick, _setAnalysisPick] = createSignal<{
+        team: Team;
+        championKey: string;
+    }>();
+    const [showAnalysisPick, setShowAnalysisPick] = createSignal(false);
+    const [savedRoleFilter, setSavedRoleFilter] = createSignal<Role>();
+    let previewSlot:
+        { team: Team; index: number; championKey: string } | undefined;
 
-    const isSelectedChampion = (suggestion: Suggestion) => {
-        if (suggestion.championKey !== selectedChampionKey()) return false;
-        const role = selectedChampionRole();
-        return role === undefined || suggestion.role === role;
-    };
+    function restoreAnalysisPreview() {
+        const slot = previewSlot;
+        previewSlot = undefined;
+        if (!slot) return;
 
-    const [previewPick, setPreviewPick] = createSignal<PreviewPick>();
-    const [showPreview, setShowPreview] = createSignal(false);
-
-    function openPreview(championKey: string, role: Role | undefined) {
-        if (!selection.team) return;
-        setPreviewPick({
-            team: selection.team,
-            index: selection.index,
-            championKey,
-            role,
-        });
-        setShowPreview(true);
+        const team = slot.team === "ally" ? allyTeam : opponentTeam;
+        if (team[slot.index]?.championKey === slot.championKey) {
+            pickChampion(slot.team, slot.index, undefined, undefined, {
+                updateSelection: false,
+                resetFilters: false,
+                updateView: false,
+            });
+        }
+        if (
+            selection.type === "pick" &&
+            selection.team === slot.team &&
+            selection.index === slot.index
+        ) {
+            setRoleFilter(savedRoleFilter());
+        }
     }
+
+    function setAnalysisPick(
+        pick:
+            | { team: Team; championKey: string; role: Role | undefined }
+            | undefined,
+    ) {
+        batch(() => {
+            if (!pick) {
+                restoreAnalysisPreview();
+                setSavedRoleFilter(undefined);
+                setShowAnalysisPick(false);
+                return;
+            }
+            if (pick.role !== undefined && selection.team) {
+                previewSlot = {
+                    team: selection.team,
+                    index: selection.index,
+                    championKey: pick.championKey,
+                };
+                setSavedRoleFilter(roleFilter());
+                pickChampion(
+                    selection.team,
+                    selection.index,
+                    pick.championKey,
+                    pick.role,
+                    {
+                        updateSelection: false,
+                        resetFilters: false,
+                        updateView: false,
+                    },
+                );
+            }
+            _setAnalysisPick(pick);
+            setShowAnalysisPick(true);
+        });
+    }
+
+    onCleanup(() => {
+        if (showAnalysisPick()) restoreAnalysisPreview();
+    });
 
     const columns: () => ColumnDef<Suggestion>[] = () => [
         {
             id: "favourite",
             header: () => (
                 <button
-                    class="inline-flex group"
+                    type="button"
+                    data-draft-table-control
+                    aria-label="Show favourite champions only"
+                    aria-pressed={favouriteFilter()}
+                    class="inline-flex size-11 items-center justify-center rounded-md group focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
                     onClick={() => setFavouriteFilter(!favouriteFilter())}
                 >
                     <Icon
                         path={star}
+                        aria-hidden="true"
                         class="w-6 inline group-hover:opacity-80 transition duration-200 ease-out"
                         classList={{
                             "opacity-50": !favouriteFilter(),
@@ -221,12 +277,14 @@ export default function DraftTable() {
                         fallback={
                             <Icon
                                 path={starOutline}
+                                aria-hidden="true"
                                 class="w-6 opacity-0 group-hover/row:opacity-50 transition duration-200 ease-out group-hover/cell:opacity-80!"
                             />
                         }
                     >
                         <Icon
                             path={star}
+                            aria-hidden="true"
                             class="w-6 opacity-50 group-hover/cell:opacity-80 transition duration-200 ease-out"
                         />
                     </Show>
@@ -309,31 +367,64 @@ export default function DraftTable() {
               ] as ColumnDef<Suggestion>[])
             : []),
         {
+            id: "winrate",
             header: "Winrate",
             accessorFn: (suggestion) => suggestion.draftResult.totalRating,
-            cell: (info) => (
-                <div class="flex justify-end">
-                    <RatingText rating={info.getValue<number>()} />
-                </div>
-            ),
+            cell: (info) => {
+                const matchup = () => directMatchup(info.row.original);
+
+                return (
+                    <div class="flex items-baseline justify-end gap-2">
+                        <RatingText rating={info.getValue<number>()} />
+                        <Show when={matchup()}>
+                            <span
+                                class="text-[0.7em] tabular-nums text-neutral-400"
+                                title={`${formatPercentage(
+                                    matchup()!.winrate,
+                                )}% versus ${championName(
+                                    dataset()!.championData[
+                                        matchup()!.opponentChampionKey
+                                    ],
+                                    config,
+                                )} ${
+                                    displayNameByRole[info.row.original.role]
+                                }; ${Math.round(
+                                    matchup()!.games,
+                                ).toLocaleString()} games over the last 30 days`}
+                            >
+                                {`(${formatPercentage(matchup()!.winrate)})`}
+                            </span>
+                        </Show>
+                    </div>
+                );
+            },
         },
         {
             id: "actions",
             cell: (info) => (
                 <button
-                    tabIndex={-1}
+                    type="button"
+                    data-draft-table-control
+                    aria-label={`Open analysis for ${championName(
+                        dataset()!.championData[info.row.original.championKey],
+                        config,
+                    )}`}
                     onClick={(e) => {
                         e.stopPropagation();
-                        openPreview(
-                            info.row.original.championKey,
-                            info.row.original.role,
-                        );
+                        if (!selection.team) return;
+                        setAnalysisPick({
+                            team: selection.team,
+                            championKey: info.row.original.championKey,
+                            role: info.row.original.role,
+                        });
                     }}
-                    class="py-2"
+                    disabled={!selection.team}
+                    class="flex size-11 items-center justify-center rounded-md focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-white/70"
                 >
                     <Icon
                         path={informationCircle}
                         class="w-5 h-5 opacity-40 hover:opacity-80 transition duration-150 ease-in-out"
+                        aria-hidden="true"
                     />
                 </button>
             ),
@@ -358,7 +449,7 @@ export default function DraftTable() {
         getSortedRowModel: getSortedRowModel(),
     });
 
-    function pick(row: Row<Suggestion>, e: MouseEvent | KeyboardEvent) {
+    function pick(row: Row<Suggestion>) {
         if (!selection.team) {
             createMustSelectToast();
             return;
@@ -371,51 +462,176 @@ export default function DraftTable() {
             row.original.role,
         );
 
-        if (e instanceof KeyboardEvent) {
-            focusSearch();
+        // Avoid opening the on-screen keyboard after every pick on mobile
+        if (!isMobileLayout()) {
+            draftTableRoot
+                .closest("[data-draft-view]")
+                ?.querySelector<HTMLInputElement>("[data-draft-search]")
+                ?.focus();
         }
     }
 
-    createTableKeyboardNavigation("draft-table", (team) => select(team));
+    onMount(() => {
+        const draftTable =
+            draftTableRoot.querySelector<HTMLElement>("[data-draft-table]");
+        if (!draftTable) return;
+
+        const onKeyDown = (e: KeyboardEvent) => {
+            if (
+                e.defaultPrevented ||
+                e.isComposing ||
+                e.ctrlKey ||
+                e.altKey ||
+                e.metaKey ||
+                e.shiftKey
+            ) {
+                return;
+            }
+
+            if (
+                document.querySelector(
+                    '[role="dialog"][data-expanded], [role="menu"][data-expanded]',
+                )
+            ) {
+                return;
+            }
+
+            const activeElement = document.activeElement;
+            const activeRow =
+                activeElement instanceof HTMLTableRowElement &&
+                draftTable.contains(activeElement)
+                    ? activeElement
+                    : undefined;
+            const eventTarget = e.target;
+            if (!(eventTarget instanceof Element)) return;
+
+            const draftView = draftTableRoot.closest("[data-draft-view]");
+            const eventIsInDraftView =
+                eventTarget === document.body ||
+                Boolean(draftView?.contains(eventTarget));
+            if (!eventIsInDraftView && !activeRow) return;
+
+            if (
+                !activeRow &&
+                eventTarget.closest(
+                    "input, textarea, select, option, button, a[href], [contenteditable]:not([contenteditable='false']), [role='button'], [role='menu'], [role='menuitem'], [role='dialog'], [aria-modal='true']",
+                )
+            ) {
+                return;
+            }
+
+            const rows = () =>
+                Array.from(
+                    draftTable.querySelectorAll<HTMLTableRowElement>(
+                        "tbody tr[tabindex='0']",
+                    ),
+                );
+            const focusRow = (offset: -1 | 1) => {
+                const availableRows = rows();
+                if (availableRows.length === 0) return false;
+
+                if (!activeRow) {
+                    availableRows[0].focus();
+                    return true;
+                }
+
+                const currentIndex = availableRows.indexOf(activeRow);
+                availableRows[currentIndex + offset]?.focus();
+                return true;
+            };
+
+            if (e.key === "ArrowLeft" || e.key === "h") {
+                e.preventDefault();
+                select("ally", undefined, { type: selection.type });
+            } else if (e.key === "ArrowRight" || e.key === "l") {
+                e.preventDefault();
+                select("opponent", undefined, { type: selection.type });
+            } else if (e.key === "ArrowUp" || e.key === "k") {
+                if (focusRow(-1)) e.preventDefault();
+            } else if (e.key === "ArrowDown" || e.key === "j") {
+                if (focusRow(1)) e.preventDefault();
+            }
+        };
+        window.addEventListener("keydown", onKeyDown);
+        onCleanup(() => {
+            window.removeEventListener("keydown", onKeyDown);
+        });
+    });
 
     return (
         <>
-            <Table
-                table={table}
-                onClickRow={pick}
-                rowClassName={(r) =>
-                    isSelectedChampion(r.original)
-                        ? "bg-neutral-800! shadow-[inset_3px_0_0_var(--color-neutral-300)]"
-                        : allBans().has(r.original.championKey) ||
-                            !ownsChampion(r.original.championKey)
-                          ? "opacity-30"
-                          : ""
-                }
-                rowContextMenu={(row) => (
-                    <ChampionContextMenuContent
-                        championKey={row.original.championKey}
-                        role={row.original.role}
-                        onAnalysis={
-                            selection.team
-                                ? () =>
-                                      openPreview(
-                                          row.original.championKey,
-                                          row.original.role,
-                                      )
-                                : undefined
-                        }
-                    />
-                )}
-                id="draft-table"
-            />
-            <Dialog open={showPreview()} onOpenChange={setShowPreview}>
-                <Show when={previewPick()} keyed>
-                    {(pick) => (
-                        <PreviewDraftAnalysisProvider pick={pick}>
-                            <PreviewDialogContent pick={pick} />
-                        </PreviewDraftAnalysisProvider>
-                    )}
+            <div ref={draftTableRoot} class="contents">
+                <Show when={matchupAssumptions().length > 0}>
+                    <div
+                        data-matchup-assumptions
+                        class="mb-2 flex flex-wrap items-center justify-end gap-x-3 gap-y-1 text-xs uppercase text-neutral-500"
+                    >
+                        <span>Matchup assumptions</span>
+                        <For each={matchupAssumptions()}>
+                            {([role, championKey]) => (
+                                <span class="inline-flex items-center gap-1 text-neutral-300">
+                                    <RoleIcon role={role} class="h-4 w-4" />
+                                    {displayNameByRole[role]}:{" "}
+                                    {championName(
+                                        dataset()!.championData[championKey],
+                                        config,
+                                    )}
+                                </span>
+                            )}
+                        </For>
+                        <span
+                            data-matchup-assumptions-help
+                            class="normal-case text-neutral-600"
+                        >
+                            Click an opponent role to override
+                        </span>
+                    </div>
                 </Show>
+                <Table
+                    table={table}
+                    onClickRow={pick}
+                    class="min-h-0 flex-1"
+                    rowClassName={(r) =>
+                        allBans().has(r.original.championKey) ||
+                        !ownsChampion(r.original.championKey)
+                            ? "opacity-30"
+                            : ""
+                    }
+                    rowContextMenu={(row) => (
+                        <ChampionContextMenuContent
+                            championKey={row.original.championKey}
+                            role={row.original.role}
+                            onAnalysis={
+                                selection.team
+                                    ? () => {
+                                          if (!selection.team) return;
+                                          setAnalysisPick({
+                                              team: selection.team,
+                                              championKey:
+                                                  row.original.championKey,
+                                              role: row.original.role,
+                                          });
+                                      }
+                                    : undefined
+                            }
+                        />
+                    )}
+                    data-draft-table
+                />
+            </div>
+            <Dialog
+                open={showAnalysisPick()}
+                onOpenChange={(open) => {
+                    if (!open) setAnalysisPick(undefined);
+                }}
+            >
+                <ChampionDraftAnalysisDialog
+                    championKey={analysisPick()!.championKey}
+                    team={analysisPick()!.team}
+                    openChampionDraftAnalysisModal={(team, championKey) =>
+                        setAnalysisPick({ team, championKey, role: undefined })
+                    }
+                />
             </Dialog>
         </>
     );

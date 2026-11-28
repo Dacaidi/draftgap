@@ -1,9 +1,4 @@
-import {
-    arrowDownTray,
-    check,
-    exclamationCircle,
-    star,
-} from "solid-heroicons/outline";
+import { check, exclamationCircle, star } from "solid-heroicons/outline";
 import toast from "solid-toast";
 import { Toast } from "../components/common/Toast";
 
@@ -53,6 +48,19 @@ export const createErrorToast = (message: string) => {
     );
 };
 
+export const createDatasetUpdateToast = (message: string, failed = false) =>
+    toast.custom(
+        (t) => (
+            <Toast
+                t={t}
+                icon={failed ? exclamationCircle : check}
+                title="Data update"
+                content={message}
+            />
+        ),
+        { duration: 6000 },
+    );
+
 export const createMustSelectToast = () => {
     return toast.custom(
         (t) => (
@@ -67,18 +75,4 @@ export const createMustSelectToast = () => {
             duration: 3000,
         },
     );
-};
-
-export const createUpdateAvailableToast = (onSubmit: () => void) => {
-    return toast.custom((t) => (
-        <Toast
-            t={t}
-            icon={arrowDownTray}
-            title="Update available"
-            content="A new version of DraftGap is available. The app will restart after updating."
-            dismissText="Later"
-            okText="Update"
-            onSubmit={onSubmit}
-        />
-    ));
 };

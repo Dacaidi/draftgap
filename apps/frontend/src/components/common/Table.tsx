@@ -6,18 +6,20 @@ import { ContextMenu, ContextMenuTrigger } from "./ContextMenu";
 
 interface Props<T> {
     table: TanstackTable<T>;
-    onClickRow?: (row: Row<T>, e: MouseEvent | KeyboardEvent) => void;
+    onClickRow?: (row: Row<T>, event: MouseEvent | KeyboardEvent) => void;
     rowClassName?: (row: Row<T>) => string;
-    /** Context menu content (e.g. a `ContextMenuContent`) shown on right click of a row. */
     rowContextMenu?: (row: Row<T>) => JSX.Element;
 }
 
 export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
-    let tableEl: HTMLTableElement | undefined;
+    let tableEl: HTMLDivElement | undefined;
 
     const rows = createMemo(() => props.table.getRowModel().rows);
 
-    const rowVirtualizer = createVirtualizer<Element, Element>({
+    const rowVirtualizer = createVirtualizer<
+        HTMLDivElement,
+        HTMLTableRowElement
+    >({
         getScrollElement: () => tableEl!,
         estimateSize: () => 57,
         get count() {
@@ -60,7 +62,7 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                         <th
                                             scope="col"
                                             class={cn(
-                                                "py-3 px-2 text-left font-normal uppercase w-full whitespace-nowrap transition-colors",
+                                                "py-3 px-2 text-left font-normal uppercase w-full whitespace-nowrap transition-colors focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ally",
                                                 {
                                                     "pl-4": i() === 0,
                                                     "pr-4":
@@ -76,7 +78,36 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                                         .meta as any
                                                 )?.headerClass,
                                             )}
+                                            aria-sort={
+                                                !header.column.getCanSort()
+                                                    ? undefined
+                                                    : header.column.getIsSorted() ===
+                                                        "asc"
+                                                      ? "ascending"
+                                                      : header.column.getIsSorted() ===
+                                                          "desc"
+                                                        ? "descending"
+                                                        : "none"
+                                            }
+                                            tabindex={
+                                                header.column.getCanSort()
+                                                    ? 0
+                                                    : undefined
+                                            }
                                             onClick={header.column.getToggleSortingHandler()}
+                                            onKeyDown={(event) => {
+                                                if (
+                                                    !header.column.getCanSort() ||
+                                                    (event.key !== "Enter" &&
+                                                        event.key !== " ")
+                                                )
+                                                    return;
+
+                                                event.preventDefault();
+                                                header.column.getToggleSortingHandler()?.(
+                                                    event,
+                                                );
+                                            }}
                                         >
                                             <div class="flex items-center gap-1">
                                                 {header.isPlaceholder
@@ -95,8 +126,8 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                                                     <span class="text-base mr-">
                                                         {
                                                             {
-                                                                asc: " ▲",
-                                                                desc: " ▼",
+                                                                asc: "\u25B2",
+                                                                desc: "\u25BC",
                                                             }[
                                                                 header.column.getIsSorted() as string
                                                             ]
@@ -117,80 +148,104 @@ export function Table<T>(props: Props<T> & JSX.HTMLAttributes<HTMLDivElement>) {
                             <td style={{ height: `${paddingTop()}px` }} />
                         </tr>
                     </Show>
-                    <For
-                        each={rowVirtualizer
-                            .getVirtualItems()
-                            .map((i: any) => rows()[i.index])
-                            .filter((r: any) => r)}
-                    >
-                        {(row) => (
-                            <ContextMenu>
-                                <ContextMenuTrigger
-                                    as="tr"
-                                    disabled={!props.rowContextMenu}
-                                    class="transition duration-200 ease-out group/row"
-                                    classList={{
-                                        "hover:bg-neutral-800": Boolean(
-                                            props.onClickRow,
-                                        ),
-                                        [props.rowClassName?.(row) ?? ""]: true,
-                                    }}
-                                    onClick={(e) => props.onClickRow?.(row, e)}
-                                    tabindex={props.onClickRow ? 0 : undefined}
-                                    onKeyDown={(e) => {
-                                        if (e.key === "Enter") {
-                                            props.onClickRow?.(row, e);
-                                        }
-                                    }}
-                                >
-                                    <For each={row.getVisibleCells()}>
-                                        {(cell, i) => (
-                                            <td
-                                                class={cn(
-                                                    "whitespace-nowrap py-3 px-2 group/cell transition-colors",
-                                                    {
-                                                        "pl-4": i() === 0,
-                                                        "pr-4":
-                                                            i() ===
-                                                            row.getVisibleCells()
-                                                                .length -
-                                                                1,
-                                                        "hover:bg-neutral-800 cursor-default":
-                                                            Boolean(
-                                                                (
-                                                                    cell.column
-                                                                        .columnDef
-                                                                        .meta as any
-                                                                )?.onClickCell,
-                                                            ),
-                                                    },
-                                                    (
-                                                        cell.column.columnDef
-                                                            .meta as any
-                                                    )?.cellClass,
-                                                )}
-                                                onClick={(e) =>
-                                                    (
-                                                        cell.column.columnDef
-                                                            .meta as any
-                                                    )?.onClickCell?.(
-                                                        e,
-                                                        cell.getContext(),
-                                                    )
+                    <For each={virtualRows()}>
+                        {(virtualRow) => (
+                            <Show when={rows()[virtualRow.index]} keyed>
+                                {(row) => (
+                                    <ContextMenu>
+                                        <ContextMenuTrigger
+                                            as="tr"
+                                            disabled={!props.rowContextMenu}
+                                            data-index={virtualRow.index}
+                                            ref={(element) =>
+                                                rowVirtualizer.measureElement(
+                                                    element,
+                                                )
+                                            }
+                                            class="group/row focus-visible:outline-2 focus-visible:outline-offset-[-2px] focus-visible:outline-ally"
+                                            classList={{
+                                                "hover:bg-neutral-800": Boolean(
+                                                    props.onClickRow,
+                                                ),
+                                                [props.rowClassName?.(row) ??
+                                                ""]: true,
+                                            }}
+                                            onClick={(e) =>
+                                                props.onClickRow?.(row, e)
+                                            }
+                                            tabindex={
+                                                props.onClickRow ? 0 : undefined
+                                            }
+                                            onKeyDown={(e) => {
+                                                if (
+                                                    e.target !== e.currentTarget
+                                                )
+                                                    return;
+                                                if (
+                                                    e.key === "Enter" ||
+                                                    e.key === " "
+                                                ) {
+                                                    e.preventDefault();
+                                                    props.onClickRow?.(row, e);
                                                 }
-                                            >
-                                                {flexRender(
-                                                    cell.column.columnDef.cell,
-                                                    cell.getContext(),
+                                            }}
+                                        >
+                                            <For each={row.getVisibleCells()}>
+                                                {(cell, i) => (
+                                                    <td
+                                                        class={cn(
+                                                            "whitespace-nowrap py-3 px-2 group/cell transition-colors",
+                                                            {
+                                                                "pl-4":
+                                                                    i() === 0,
+                                                                "pr-4":
+                                                                    i() ===
+                                                                    row.getVisibleCells()
+                                                                        .length -
+                                                                        1,
+                                                                "hover:bg-neutral-800 cursor-default":
+                                                                    Boolean(
+                                                                        (
+                                                                            cell
+                                                                                .column
+                                                                                .columnDef
+                                                                                .meta as any
+                                                                        )
+                                                                            ?.onClickCell,
+                                                                    ),
+                                                            },
+                                                            (
+                                                                cell.column
+                                                                    .columnDef
+                                                                    .meta as any
+                                                            )?.cellClass,
+                                                        )}
+                                                        onClick={(e) =>
+                                                            (
+                                                                cell.column
+                                                                    .columnDef
+                                                                    .meta as any
+                                                            )?.onClickCell?.(
+                                                                e,
+                                                                cell.getContext(),
+                                                            )
+                                                        }
+                                                    >
+                                                        {flexRender(
+                                                            cell.column
+                                                                .columnDef.cell,
+                                                            cell.getContext(),
+                                                        )}
+                                                    </td>
                                                 )}
-                                            </td>
-                                        )}
-                                    </For>
-                                </ContextMenuTrigger>
-                                <Show when={props.rowContextMenu}>
-                                    {props.rowContextMenu!(row)}
-                                </Show>
-                            </ContextMenu>
+                                            </For>
+                                        </ContextMenuTrigger>
+                                        <Show when={props.rowContextMenu}>
+                                            {props.rowContextMenu?.(row)}
+                                        </Show>
+                                    </ContextMenu>
+                                )}
+                            </Show>
                         )}
                     </For>
                     <Show when={paddingBottom() > 0}>

@@ -6,12 +6,11 @@ import {
     createSignal,
     useContext,
 } from "solid-js";
-import { getVisibleChampionKey, TeamPick, useDraft } from "./DraftContext";
+import { useDraft } from "./DraftContext";
 import { useUser } from "./UserContext";
 import { getTeamDamageDistribution } from "@draftgap/core/src/damage-distribution/damage-distribution";
 import { analyzeDraft } from "@draftgap/core/src/draft/analysis";
 import { Team } from "@draftgap/core/src/models/Team";
-import { Role } from "@draftgap/core/src/models/Role";
 import { PickData } from "@draftgap/core/src/models/dataset/PickData";
 import predictRoles, {
     getTeamComps,
@@ -19,41 +18,42 @@ import predictRoles, {
 import { useDataset } from "./DatasetContext";
 import { useDraftFilters } from "./DraftFiltersContext";
 
-type DraftAnalysisOptions = {
-    allyTeam?: () => TeamPick[];
-    opponentTeam?: () => TeamPick[];
-    isPreview?: boolean;
-};
-
-export function createDraftAnalysisContext(options: DraftAnalysisOptions = {}) {
+export function createDraftAnalysisContext() {
     const { config, setConfig } = useUser();
-    const draft = useDraft();
-    const { selection } = draft;
-    const allyTeam = () => options.allyTeam?.() ?? draft.allyTeam;
-    const opponentTeam = () => options.opponentTeam?.() ?? draft.opponentTeam;
+    const { allyTeam, opponentTeam, selection, localPlayerIndex } = useDraft();
     const { roleFilter, setRoleFilter } = useDraftFilters();
     const { isLoaded, dataset, dataset30Days } = useDataset();
 
+    // Stored in the user config so the setting persists between app launches.
     const analyzeHovers = () => config.analyzeHovers;
     const setAnalyzeHovers = (value: boolean) =>
         setConfig("analyzeHovers", value);
 
-    function getTeamCompsForTeam(team: Team, excludeIndex?: number) {
+    function getAnalyzedChampionKey(team: Team, index: number) {
+        const pick = (team === "ally" ? allyTeam : opponentTeam)[index];
+        const isLocalBanHover =
+            selection.type === "ban" &&
+            team === "ally" &&
+            index === localPlayerIndex();
+        return (
+            pick.championKey ??
+            (analyzeHovers() && !isLocalBanHover ? pick.hoverKey : undefined)
+        );
+    }
+
+    function getTeamCompsForTeam(team: Team) {
         if (!isLoaded()) return [];
 
-        const picks = team === "ally" ? allyTeam() : opponentTeam();
+        const picks = team === "ally" ? allyTeam : opponentTeam;
 
-        const championData = picks
-            .filter((_, i) => i !== excludeIndex)
-            .map((pick) => ({
-                key: getVisibleChampionKey(pick, analyzeHovers()),
-                role: pick.role,
-            }))
-            .filter((pick) => pick.key !== undefined)
-            .map((pick) => ({
-                ...dataset()!.championData[pick.key!],
-                role: pick.role,
-            }));
+        const championData = picks.flatMap((pick, index) => {
+            const championKey = getAnalyzedChampionKey(team, index);
+            const champion = championKey
+                ? dataset()!.championData[championKey]
+                : undefined;
+
+            return champion ? [{ ...champion, role: pick.role }] : [];
+        });
         return getTeamComps(championData);
     }
 
@@ -68,40 +68,6 @@ export function createDraftAnalysisContext(options: DraftAnalysisOptions = {}) {
         () =>
             opponentTeamComps().at(0)?.[0] ??
             (new Map() as ReturnType<typeof opponentTeamComps>[number][0]),
-    );
-
-    /**
-     * Index of the selected pick slot of `team` when it already holds a
-     * champion, meaning that champion is being replaced.
-     */
-    const replacedIndex = (team: Team) => {
-        if (options.isPreview) return undefined;
-        if (selection.type !== "pick" || selection.team !== team) {
-            return undefined;
-        }
-        const picks = team === "ally" ? allyTeam() : opponentTeam();
-        return picks[selection.index]?.championKey !== undefined
-            ? selection.index
-            : undefined;
-    };
-
-    /** Team comp without the champion that is currently being replaced. */
-    function getSuggestionTeamComp(team: Team) {
-        const comp = team === "ally" ? allyTeamComp : opponentTeamComp;
-        const excludeIndex = replacedIndex(team);
-        if (excludeIndex === undefined) return comp();
-
-        return (
-            getTeamCompsForTeam(team, excludeIndex).at(0)?.[0] ??
-            (new Map() as ReturnType<typeof comp>)
-        );
-    }
-
-    const allySuggestionTeamComp = createMemo(() =>
-        getSuggestionTeamComp("ally"),
-    );
-    const opponentSuggestionTeamComp = createMemo(() =>
-        getSuggestionTeamComp("opponent"),
     );
 
     const allyRoles = createMemo(() => predictRoles(allyTeamComps()));
@@ -149,15 +115,14 @@ export function createDraftAnalysisContext(options: DraftAnalysisOptions = {}) {
     function getTeamData(team: Team): Map<string, PickData> {
         if (!isLoaded()) return new Map();
 
-        const picks = team === "ally" ? allyTeam() : opponentTeam();
+        const picks = team === "ally" ? allyTeam : opponentTeam;
         const roles = team === "ally" ? allyRoles() : opponentRoles();
 
         const teamData = new Map<string, PickData>();
 
-        for (const pick of picks) {
-            const key = getVisibleChampionKey(pick, analyzeHovers());
+        for (let index = 0; index < picks.length; index++) {
+            const key = getAnalyzedChampionKey(team, index);
             if (!key) continue;
-
             const championData = dataset()!.championData[key];
             const probabilityByRole = roles.get(key)!;
             teamData.set(key, {
@@ -174,7 +139,7 @@ export function createDraftAnalysisContext(options: DraftAnalysisOptions = {}) {
 
     const getLockedRoles = (team: Team) => {
         if (!selection.team) return new Set();
-        const teamDraft = team === "ally" ? allyTeam() : opponentTeam();
+        const teamDraft = team === "ally" ? allyTeam : opponentTeam;
 
         return new Set(teamDraft.map((p) => p.role));
     };
@@ -183,8 +148,9 @@ export function createDraftAnalysisContext(options: DraftAnalysisOptions = {}) {
 
         const teamComp =
             team === "ally"
-                ? allySuggestionTeamComp()
-                : opponentSuggestionTeamComp();
+                ? allyTeamComps().at(0)?.[0]
+                : opponentTeamComps().at(0)?.[0];
+        if (!teamComp) return new Set();
 
         return new Set(teamComp.keys());
     };
@@ -198,7 +164,6 @@ export function createDraftAnalysisContext(options: DraftAnalysisOptions = {}) {
     };
 
     createEffect(() => {
-        if (options.isPreview) return;
         const team = roleFilterTeam();
         if (!team) return;
 
@@ -236,12 +201,11 @@ export function createDraftAnalysisContext(options: DraftAnalysisOptions = {}) {
         opponentTeamComps,
         allyTeamComp,
         opponentTeamComp,
-        allySuggestionTeamComp,
-        opponentSuggestionTeamComp,
         allyRoles,
         opponentRoles,
         getLockedRoles,
         getFilledRoles,
+        getAnalyzedChampionKey,
         roleFilterTeam,
         draftAnalysisConfig,
         analysisPick,
@@ -258,49 +222,6 @@ export const DraftAnalysisContext =
 export function DraftAnalysisProvider(props: { children: JSXElement }) {
     return (
         <DraftAnalysisContext.Provider value={createDraftAnalysisContext()}>
-            {props.children}
-        </DraftAnalysisContext.Provider>
-    );
-}
-
-export type PreviewPick = {
-    team: Team;
-    index: number;
-    championKey: string;
-    role: Role | undefined;
-};
-
-/**
- * Provides a draft analysis of the current draft with `pick` placed in its slot,
- * without modifying the actual draft.
- */
-export function PreviewDraftAnalysisProvider(props: {
-    pick: PreviewPick;
-    children: JSXElement;
-}) {
-    const { allyTeam, opponentTeam } = useDraft();
-
-    const withPreview = (team: Team, picks: TeamPick[]) =>
-        team !== props.pick.team
-            ? picks
-            : picks.map((p, i) =>
-                  i === props.pick.index
-                      ? {
-                            championKey: props.pick.championKey,
-                            role: props.pick.role,
-                            hover: false,
-                        }
-                      : p,
-              );
-
-    const ctx = createDraftAnalysisContext({
-        allyTeam: () => withPreview("ally", allyTeam),
-        opponentTeam: () => withPreview("opponent", opponentTeam),
-        isPreview: true,
-    });
-
-    return (
-        <DraftAnalysisContext.Provider value={ctx}>
             {props.children}
         </DraftAnalysisContext.Provider>
     );

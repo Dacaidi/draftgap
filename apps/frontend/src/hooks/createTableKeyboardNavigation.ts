@@ -7,6 +7,21 @@ export function createTableKeyboardNavigation(
 ) {
     onMount(() => {
         const onKeyDown = (e: KeyboardEvent) => {
+            if (
+                e.defaultPrevented ||
+                e.isComposing ||
+                e.altKey ||
+                e.ctrlKey ||
+                e.metaKey ||
+                e.shiftKey
+            )
+                return;
+            if (
+                document.querySelector(
+                    '[role="dialog"][data-expanded], [role="menu"][data-expanded]',
+                )
+            )
+                return;
             const table = document.getElementById(tableId);
             if (!table) return;
 
@@ -21,7 +36,9 @@ export function createTableKeyboardNavigation(
 
             const selectFirstRow = () => {
                 (
-                    table.querySelector("tbody tr") as HTMLTableRowElement
+                    table.querySelector(
+                        "tbody tr[tabindex='0']",
+                    ) as HTMLTableRowElement
                 )?.focus();
             };
 
@@ -39,7 +56,7 @@ export function createTableKeyboardNavigation(
                 }
                 const previous =
                     activeElement.previousSibling as HTMLTableRowElement;
-                if (previous.tagName === "TR") {
+                if (previous?.tagName === "TR") {
                     previous.focus();
                 }
             } else if (e.key === "ArrowDown" || e.key === "j") {
@@ -49,7 +66,7 @@ export function createTableKeyboardNavigation(
                     return;
                 }
                 const next = activeElement.nextSibling as HTMLTableRowElement;
-                if (next.tagName === "TR") {
+                if (next?.tagName === "TR") {
                     next.focus();
                 }
             }

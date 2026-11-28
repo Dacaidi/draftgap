@@ -279,6 +279,8 @@ export default function BanTable() {
                 />
             )}
             id="ban-table"
+            data-draft-table
+            class="min-h-0 flex-1"
         />
     );
 }

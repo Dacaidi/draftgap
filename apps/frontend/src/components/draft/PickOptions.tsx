@@ -1,13 +1,9 @@
 import { Icon } from "solid-heroicons";
 import { ellipsisVertical } from "solid-heroicons/outline";
 import { presentationChartLine, trash, user } from "solid-heroicons/solid-mini";
-import {
-    getPickedChampionKey,
-    getVisibleChampionKey,
-    useDraft,
-} from "../../contexts/DraftContext";
+import { useDraft } from "../../contexts/DraftContext";
 import { Team } from "@draftgap/core/src/models/Team";
-import { ROLES, Role } from "@draftgap/core/src/models/Role";
+import { displayNameByRole, ROLES, Role } from "@draftgap/core/src/models/Role";
 import { linkByStatsSite } from "../../utils/sites";
 import { useUser } from "../../contexts/UserContext";
 import { useDraftAnalysis } from "../../contexts/DraftAnalysisContext";
@@ -23,7 +19,6 @@ import {
     DropdownMenuShortcut,
     DropdownMenuTrigger,
 } from "../common/DropdownMenu";
-import { ContextMenuContent } from "../common/ContextMenu";
 import { cn } from "../../utils/style";
 import { buttonVariants } from "../common/Button";
 import { For, Show } from "solid-js";
@@ -31,18 +26,39 @@ import { RoleIcon } from "../icons/roles/RoleIcon";
 import { championName } from "../../utils/i18n";
 
 export function PickOptions(props: { team: Team; index: number }) {
+    const { config } = useUser();
+    const { dataset } = useDataset();
+    const { allyTeam, opponentTeam } = useDraft();
+    const { analyzeHovers } = useDraftAnalysis();
+    const champion = () => {
+        const pick = (props.team === "ally" ? allyTeam : opponentTeam)[
+            props.index
+        ];
+        const key =
+            pick.championKey ?? (analyzeHovers() ? pick.hoverKey : undefined);
+        return key ? dataset()?.championData[key] : undefined;
+    };
+
     return (
-        <div class="absolute right-0 top-0 transition-opacity [@media(hover:hover)]:opacity-40 group-hover/pick:opacity-100 has-focus-visible:opacity-100 has-data-expanded:opacity-100">
+        <div class="absolute right-0 top-0">
             <DropdownMenu>
-                <DropdownMenuTrigger>
-                    <button
-                        class={cn(
-                            buttonVariants({ variant: "transparent" }),
-                            "px-1 py-2",
-                        )}
-                    >
-                        <Icon path={ellipsisVertical} class="h-7" />
-                    </button>
+                <DropdownMenuTrigger
+                    data-pick-options-trigger
+                    aria-label={`Open options for ${
+                        champion()
+                            ? championName(champion()!, config)
+                            : `pick ${props.index + 1}`
+                    }`}
+                    class={cn(
+                        buttonVariants({ variant: "transparent" }),
+                        "size-11 justify-center p-0",
+                    )}
+                >
+                    <Icon
+                        path={ellipsisVertical}
+                        class="h-7"
+                        aria-hidden="true"
+                    />
                 </DropdownMenuTrigger>
                 <PickOptionsContent team={props.team} index={props.index} />
             </DropdownMenu>
@@ -51,25 +67,6 @@ export function PickOptions(props: { team: Team; index: number }) {
 }
 
 export function PickOptionsContent(props: { team: Team; index: number }) {
-    return (
-        <DropdownMenuContent>
-            <PickOptionsItems team={props.team} index={props.index} />
-        </DropdownMenuContent>
-    );
-}
-
-export function PickOptionsContextMenuContent(props: {
-    team: Team;
-    index: number;
-}) {
-    return (
-        <ContextMenuContent>
-            <PickOptionsItems team={props.team} index={props.index} />
-        </ContextMenuContent>
-    );
-}
-
-function PickOptionsItems(props: { team: Team; index: number }) {
     const { config } = useUser();
     const { dataset } = useDataset();
     const { pickChampion, allyTeam, opponentTeam } = useDraft();
@@ -82,15 +79,20 @@ function PickOptionsItems(props: { team: Team; index: number }) {
         props.team === "ally" ? allyTeamComp() : opponentTeamComp();
 
     const champion = () => {
-        const key = getVisibleChampionKey(
-            teamPicks()[props.index],
-            analyzeHovers(),
-        );
-        return key ? dataset()?.championData[key] : undefined;
+        const pick = teamPicks()[props.index];
+
+        if (pick.championKey) {
+            return dataset()?.championData[pick.championKey!];
+        }
+        if (pick.hoverKey && analyzeHovers()) {
+            return dataset()?.championData[pick.hoverKey!];
+        }
+
+        return undefined;
     };
 
     return (
-        <>
+        <DropdownMenuContent>
             <DropdownMenuLabel>
                 {champion()
                     ? championName(champion()!, config)
@@ -155,25 +157,29 @@ function PickOptionsItems(props: { team: Team; index: number }) {
                     <For each={ROLES}>
                         {(role) => (
                             <button
+                                type="button"
+                                aria-label={`Set ${displayNameByRole[role]} role`}
+                                aria-pressed={
+                                    teamPicks()[props.index].role === role
+                                }
                                 class={cn(
                                     buttonVariants({
                                         variant: "transparent",
                                     }),
-                                    "px-1.5 relative",
+                                    "size-11 justify-center p-0 relative",
                                 )}
                                 onClick={() =>
                                     pickChampion(
                                         props.team,
                                         props.index,
-                                        getPickedChampionKey(
-                                            teamPicks()[props.index],
-                                        ),
+                                        teamPicks()[props.index].championKey,
                                         role,
                                     )
                                 }
                             >
                                 <RoleIcon
                                     role={role}
+                                    aria-hidden="true"
                                     class={cn("h-6 w-6 text-neutral-500", {
                                         "text-white":
                                             teamPicks()[props.index].role ===
@@ -192,6 +198,6 @@ function PickOptionsItems(props: { team: Team; index: number }) {
                     </For>
                 </div>
             </DropdownMenuGroup>
-        </>
+        </DropdownMenuContent>
     );
 }

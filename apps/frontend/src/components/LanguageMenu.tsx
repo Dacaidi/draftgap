@@ -19,21 +19,23 @@ export const LanguageDropdownMenu: Component = () => {
 
     return (
         <DropdownMenu>
-            <DropdownMenuTrigger>
-                <button
-                    class={cn(
-                        buttonVariants({ variant: "transparent" }),
-                        "px-1 py-2",
-                    )}
-                >
-                    <Icon path={language} class="w-7" />
-                </button>
+            <DropdownMenuTrigger
+                aria-label="Change language"
+                class={cn(
+                    buttonVariants({ variant: "transparent" }),
+                    "size-11 justify-center p-0",
+                )}
+            >
+                <Icon path={language} class="w-7" aria-hidden="true" />
             </DropdownMenuTrigger>
             <DropdownMenuContent class="w-56">
                 <DropdownMenuLabel>Language</DropdownMenuLabel>
                 <DropdownMenuSeparator />
                 <DropdownMenuGroup>
                     <DropdownMenuItem
+                        aria-current={
+                            config.language === "en_US" ? "true" : undefined
+                        }
                         onSelect={() => setConfig({ language: "en_US" })}
                         class={cn(
                             config.language === "en_US" && "bg-neutral-700",
@@ -42,6 +44,9 @@ export const LanguageDropdownMenu: Component = () => {
                         <span>English</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem
+                        aria-current={
+                            config.language === "zh_CN" ? "true" : undefined
+                        }
                         onSelect={() => setConfig({ language: "zh_CN" })}
                         class={cn(
                             config.language === "zh_CN" && "bg-neutral-700",

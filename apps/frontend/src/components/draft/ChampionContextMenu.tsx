@@ -107,9 +107,7 @@ export function ChampionContextMenuContent(props: Props) {
                         }
                     >
                         <DropdownMenuIcon path={star} />
-                        <span>
-                            {favourite() ? "Unfavourite" : "Favourite"}
-                        </span>
+                        <span>{favourite() ? "Unfavourite" : "Favourite"}</span>
                     </DropdownMenuItem>
                     <DropdownMenuItem asChild>
                         <a

@@ -24,10 +24,11 @@ import {
     createImportFavouritePicksSuccessToast,
     createImportFavouritePicksToast,
 } from "../utils/toast";
-import { getPickedChampionKey, useDraft } from "./DraftContext";
+import { useDraft } from "./DraftContext";
 import { useMedia } from "../hooks/useMedia";
 import { useUser } from "./UserContext";
 import { LolalyticsRole } from "../../../dataset/src/lolalytics/roles";
+import { getLcuBanSlots } from "./lcu-bans";
 
 const createChampSelectSession = (): LolChampSelectChampSelectSession => ({
     actions: [],
@@ -94,6 +95,7 @@ export const createLolClientContext = () => {
         opponentTeam,
         setTeamBans,
         setOwnedChampions,
+        setLocalPlayerIndex,
         selection,
         selectNextPick,
     } = useDraft();
@@ -137,14 +139,11 @@ export const createLolClientContext = () => {
         session: LolChampSelectChampSelectSession,
         firstTime = false,
     ) => {
-        const nextPick = session.actions
-            .flat()
-            .find((a) => a.type === "pick" && !a.completed);
-        const allyBansInProgress = session.actions
-            .flat()
-            .filter(
-                (a) => a.type === "ban" && a.isInProgress && a.isAllyAction,
-            );
+        const actions = session.actions.flat();
+        const nextPick = actions.find((a) => a.type === "pick" && !a.completed);
+        const allyBansInProgress = actions.filter(
+            (a) => a.type === "ban" && a.isInProgress && a.isAllyAction,
+        );
         const currentBan =
             allyBansInProgress.find(
                 (a) => a.actorCellId === session.localPlayerCellId,
@@ -173,7 +172,7 @@ export const createLolClientContext = () => {
 
             if (selection.championId) {
                 const championKey = selection.championId.toString();
-                if (getPickedChampionKey(teamPicks[index]) === championKey) {
+                if (teamPicks[index].championKey === championKey) {
                     return false;
                 }
                 const resetFilters =
@@ -187,15 +186,10 @@ export const createLolClientContext = () => {
                 return true;
             } else {
                 let championKey = undefined;
-                if (
-                    selection.championPickIntent &&
-                    selection.summonerId !== currentSummoner.summonerId
-                ) {
+                if (selection.championPickIntent) {
                     championKey = selection.championPickIntent.toString();
                 }
-                const pick = teamPicks[index];
-                const hoverKey = pick.hover ? pick.championKey : undefined;
-                if (hoverKey !== championKey) {
+                if (teamPicks[index].hoverKey !== championKey) {
                     hoverChampion(team, index, championKey, role);
                 }
             }
@@ -204,6 +198,11 @@ export const createLolClientContext = () => {
         };
 
         batch(() => {
+            setLocalPlayerIndex(
+                session.myTeam.findIndex(
+                    (p) => p.cellId === session.localPlayerCellId,
+                ),
+            );
             let draftChanged = firstTime;
             for (let i = 0; i < session.myTeam.length; i++) {
                 const selection = session.myTeam[i];
@@ -216,39 +215,12 @@ export const createLolClientContext = () => {
                     processSelection(selection, "opponent", i) || draftChanged;
             }
 
-            // Handle bans
-            // Place each ban in the slot of the player who banned it, like the client does
-            const getBannedChampions = (isAllyAction: boolean) => {
-                const teamSelections = isAllyAction
-                    ? session.myTeam
-                    : session.theirTeam;
-                const banActions = session.actions
-                    .flat()
-                    .filter(
-                        (a) =>
-                            a.type === "ban" && a.isAllyAction === isAllyAction,
-                    );
-                const bans: (string | undefined)[] = [];
-                banActions.forEach((a, actionIndex) => {
-                    if (!a.completed || a.championId <= 0) return;
-                    const playerIndex = teamSelections.findIndex(
-                        (s) => s.cellId === a.actorCellId,
-                    );
-                    const index =
-                        playerIndex !== -1 ? playerIndex : actionIndex;
-                    bans[index] = String(a.championId);
-                });
-                return bans;
-            };
-            setTeamBans("ally", getBannedChampions(true));
-            setTeamBans("opponent", getBannedChampions(false));
+            setTeamBans("ally", getLcuBanSlots(session, true));
+            setTeamBans("opponent", getLcuBanSlots(session, false));
 
-            // Move selection to the next pick once all ally bans are done
-            const allyBansRemaining = session.actions
-                .flat()
-                .some(
-                    (a) => a.type === "ban" && a.isAllyAction && !a.completed,
-                );
+            const allyBansRemaining = actions.some(
+                (a) => a.type === "ban" && a.isAllyAction && !a.completed,
+            );
             if (
                 !currentBan &&
                 !allyBansRemaining &&
@@ -257,7 +229,6 @@ export const createLolClientContext = () => {
                 lastSelectedBanActionId = undefined;
                 draftChanged = true;
             }
-
             if (currentBan) {
                 if (currentBan.id !== lastSelectedBanActionId) {
                     lastSelectedBanActionId = currentBan.id;
@@ -268,28 +239,14 @@ export const createLolClientContext = () => {
                 }
             } else if (
                 selection.type === "ban" &&
-                !session.actions
-                    .flat()
-                    .some((a) => a.type === "ban" && !a.completed)
+                !actions.some((a) => a.type === "ban" && !a.completed)
             ) {
-                // All bans are placed, move from banning to picking
                 selectNextPick("ally", { resetFilters: false });
-            } else if (nextPick && draftChanged) {
-                // Set next pick if draft has changed
-                const nextPickTeamSelection = nextPick.isAllyAction
-                    ? session.myTeam
-                    : session.theirTeam;
-                const index = nextPickTeamSelection.findIndex(
-                    (s) => s.cellId === nextPick.actorCellId,
+            } else if (nextPick?.isAllyAction && draftChanged) {
+                const index = session.myTeam.findIndex(
+                    (player) => player.cellId === nextPick.actorCellId,
                 );
-
-                // Only update next pick if ally
-                // Irritating to have it update when opponent picks
-                if (nextPick.isAllyAction) {
-                    select(nextPick.isAllyAction ? "ally" : "opponent", index, {
-                        resetFilters: false,
-                    });
-                }
+                select("ally", index, { resetFilters: false });
             }
 
             setChampSelectSession(session);
@@ -380,6 +337,8 @@ export const createLolClientContext = () => {
                         setTeamBans("ally", []);
                         setTeamBans("opponent", []);
                         setOwnedChampions(new Set<string>());
+                        setLocalPlayerIndex(undefined);
+                        lastSelectedBanActionId = undefined;
                     }
 
                     setClientState(ClientState.MainMenu);
@@ -422,6 +381,7 @@ export const createLolClientContext = () => {
         if (integrationTimeout() != null) {
             clearTimeout(integrationTimeout());
         }
+        setLocalPlayerIndex(undefined);
         setClientState(ClientState.Disabled);
     };
 

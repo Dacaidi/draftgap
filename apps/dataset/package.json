@@ -1,8 +1,9 @@
 {
     "name": "@draftgap/dataset",
-    "version": "3.3.1",
+    "version": "3.2.2",
     "scripts": {
         "start": "bun run src/index.ts",
+        "generate-hosted": "bun run src/generate-hosted-dataset.ts",
         "typecheck": "tsc --noEmit",
         "format": "bunx prettier . --write"
     },

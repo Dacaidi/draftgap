@@ -8,7 +8,20 @@ import { check, checkCircle } from "solid-heroicons/solid-mini";
 
 export const DropdownMenu = DropdownMenuPrimitive.Root;
 
-export const DropdownMenuTrigger = DropdownMenuPrimitive.Trigger;
+export function DropdownMenuTrigger(
+    props: ComponentProps<typeof DropdownMenuPrimitive.Trigger>,
+) {
+    return (
+        <DropdownMenuPrimitive.Trigger
+            {...props}
+            type={props.type ?? "button"}
+            class={cn(
+                "focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/70 focus-visible:ring-offset-2 focus-visible:ring-offset-neutral-900",
+                props.class,
+            )}
+        />
+    );
+}
 
 export const DropdownMenuGroup = DropdownMenuPrimitive.Group;
 
@@ -28,6 +41,7 @@ export function DropdownMenuSubTrigger(
             {...props}
             class={cn(
                 "relative flex select-none items-center px-3 py-1.5 text-lg outline-hidden hover:bg-neutral-700 transition-colors ui-disabled:pointer-events-none ui-disabled:opacity-50 uppercase",
+                "ui-highlighted:bg-neutral-700 ui-highlighted:text-white focus-visible:outline-none",
                 {
                     "pl-8": props.inset,
                 },
@@ -40,6 +54,7 @@ export function DropdownMenuSubTrigger(
                 class="ml-auto h-4 w-4 -mr-[2px]"
                 stroke-width={2}
                 stroke="currentColor"
+                aria-hidden="true"
             />
         </DropdownMenuPrimitive.SubTrigger>
     );
@@ -90,7 +105,7 @@ export function DropdownMenuItem(
         <DropdownMenuPrimitive.Item
             {...props}
             class={cn(
-                "relative flex select-none items-center px-3 py-1.5 text-lg outline-hidden hover:bg-neutral-700 transition-colors ui-disabled:pointer-events-none ui-disabled:opacity-50 uppercase",
+                "relative flex select-none items-center px-3 py-1.5 text-lg outline-hidden hover:bg-neutral-700 ui-highlighted:bg-neutral-700 ui-highlighted:text-white focus-visible:outline-none transition-colors ui-disabled:pointer-events-none ui-disabled:opacity-50 uppercase",
                 {
                     "pl-8": props.inset,
                 },
@@ -109,13 +124,13 @@ export function DropdownMenuCheckboxItem(
         <DropdownMenuPrimitive.CheckboxItem
             {...props}
             class={cn(
-                "relative flex cursor-default select-none items-center rounded-xs py-1.5 pl-8 pr-2 text-lg outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground ui-disabled:pointer-events-none ui-disabled:opacity-50",
+                "relative flex cursor-default select-none items-center rounded-xs py-1.5 pl-8 pr-2 text-lg outline-hidden transition-colors hover:bg-neutral-700 ui-highlighted:bg-neutral-700 ui-highlighted:text-white focus-visible:outline-none ui-disabled:pointer-events-none ui-disabled:opacity-50",
                 props.class,
             )}
         >
             <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
                 <DropdownMenuPrimitive.ItemIndicator>
-                    <Icon path={check} class="h-4 w-4" />
+                    <Icon path={check} class="h-4 w-4" aria-hidden="true" />
                 </DropdownMenuPrimitive.ItemIndicator>
             </span>
         </DropdownMenuPrimitive.CheckboxItem>
@@ -129,13 +144,17 @@ export function DropdownMenuRadioItem(
         <DropdownMenuPrimitive.RadioItem
             {...props}
             class={cn(
-                "relative flex cursor-default select-none items-center rounded-xs py-1.5 pl-8 pr-2 text-lg outline-hidden transition-colors focus:bg-accent focus:text-accent-foreground ui-disabled:pointer-events-none ui-disabled:opacity-50",
+                "relative flex cursor-default select-none items-center rounded-xs py-1.5 pl-8 pr-2 text-lg outline-hidden transition-colors hover:bg-neutral-700 ui-highlighted:bg-neutral-700 ui-highlighted:text-white focus-visible:outline-none ui-disabled:pointer-events-none ui-disabled:opacity-50",
                 props.class,
             )}
         >
             <span class="absolute left-2 flex h-3.5 w-3.5 items-center justify-center">
                 <DropdownMenuPrimitive.ItemIndicator>
-                    <Icon path={checkCircle} class="h-2 w-2 fill-current" />
+                    <Icon
+                        path={checkCircle}
+                        class="h-2 w-2 fill-current"
+                        aria-hidden="true"
+                    />
                 </DropdownMenuPrimitive.ItemIndicator>
             </span>
             {props.children}
@@ -192,6 +211,7 @@ export function DropdownMenuIcon(props: ComponentProps<typeof Icon>) {
         <Icon
             {...props}
             class={cn("mr-3 h-5 w-5 text-neutral-400", props.class)}
+            aria-hidden="true"
         />
     );
 }

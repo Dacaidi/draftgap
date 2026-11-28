@@ -13,14 +13,16 @@ import {
     PartialBuildDataset,
     FullBuildDataset,
 } from "@draftgap/core/src/models/build/BuildDataset";
-import { getPickedChampionKey, useDraft } from "./DraftContext";
+import { useDraft } from "./DraftContext";
 import { Team } from "@draftgap/core/src/models/Team";
 import { BuildEntity } from "@draftgap/core/src/models/build/BuildEntity";
 import { useDraftAnalysis } from "./DraftAnalysisContext";
 import { useDataset } from "./DatasetContext";
 import { useDraftView } from "./DraftViewContext";
+import { useUser } from "./UserContext";
 
 export function createBuildContext() {
+    const { config } = useUser();
     const { allyTeam, opponentTeam } = useDraft();
     const { dataset, dataset30Days } = useDataset();
     const { allyTeamComp, opponentTeamComp, draftAnalysisConfig } =
@@ -33,25 +35,6 @@ export function createBuildContext() {
     }>();
 
     function setBuildPick(pick: { team: Team; index: number } | undefined) {
-        const teamPicks = pick?.team === "ally" ? allyTeam : opponentTeam;
-        const teamComp =
-            pick?.team === "ally" ? allyTeamComp() : opponentTeamComp();
-        gtag("event", "set_build_pick", {
-            event_category: "build",
-            team: pick?.team,
-            index: pick?.index,
-            champion_key: pick ? teamPicks[pick!.index].championKey : undefined,
-            champion_name: pick
-                ? dataset()!.championData[teamPicks[pick!.index].championKey!]
-                      .name
-                : undefined,
-            role: pick
-                ? [...teamComp!.entries()].find(
-                      ([, key]) => key === teamPicks[pick!.index].championKey,
-                  )?.[0]
-                : undefined,
-        });
-
         _setBuildPick(pick);
     }
 
@@ -59,7 +42,7 @@ export function createBuildContext() {
         if (!buildPick()) return;
 
         const team = buildPick()!.team === "ally" ? allyTeam : opponentTeam;
-        const championKey = getPickedChampionKey(team[buildPick()!.index]);
+        const championKey = team[buildPick()!.index].championKey;
         if (championKey) return;
 
         _setBuildPick(undefined);
@@ -81,9 +64,7 @@ export function createBuildContext() {
 
     const team = () => (buildPick()?.team === "ally" ? allyTeam : opponentTeam);
     const championKey = () =>
-        buildPick()
-            ? getPickedChampionKey(team()[buildPick()!.index])
-            : undefined;
+        buildPick() ? team()[buildPick()!.index].championKey : undefined;
     const myTeamComp = () => {
         if (!buildPick()) return undefined;
         return buildPick()!.team === "ally"
@@ -111,6 +92,7 @@ export function createBuildContext() {
             championRole(),
             theirTeamComp() ? Object.fromEntries(theirTeamComp()!) : undefined,
             dataset(),
+            config.dataTier,
         ],
         queryFn: async (ctx) => {
             if (championKey() === undefined || !theirTeamComp() || !dataset()) {
@@ -133,6 +115,7 @@ export function createBuildContext() {
                 championKey()!,
                 championRole()!,
                 theirTeamComp()!,
+                config.dataTier,
             );
         },
         refetchInterval: false,
